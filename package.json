@@ -1,0 +1,10 @@
+{
+  "name": "virktech",
+  "private": true,
+  "description": "Convenience scripts for hosts that build and start from the repo root.",
+  "engines": { "node": ">=20.18" },
+  "scripts": {
+    "build": "npm ci --prefix client && npm run build --prefix client && npm ci --prefix server",
+    "start": "npm run migrate --prefix server && npm start --prefix server"
+  }
+}

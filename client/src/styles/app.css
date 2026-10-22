@@ -1,0 +1,238 @@
+/* App components: only what Bootstrap cannot do (tab bar, swipe rails, sticky action bars, skeletons, timeline).
+   Everything else is Bootstrap classes. Tokens live in theme.css. */
+
+.vt-skip { position: absolute; left: -999px; top: 0; z-index: 2000; background: var(--vt-ink); color: #fff; padding: 0.75rem 1rem; border-radius: 0 0 0.75rem 0; }
+.vt-skip:focus { left: 0; }
+
+/* Page space for the fixed bottom bars on phones */
+.vt-page { padding-bottom: calc(var(--vt-tabbar-h) + env(safe-area-inset-bottom) + 1.5rem); }
+.vt-page--bar { padding-bottom: calc(var(--vt-tabbar-h) + env(safe-area-inset-bottom) + 6rem); }
+@media (min-width: 768px) { .vt-page, .vt-page--bar { padding-bottom: 2.5rem; } }
+
+/* ---- Header ---- */
+.vt-header { position: sticky; top: 0; z-index: 1020; background: #fff; border-bottom: 1px solid var(--vt-line); }
+.vt-header-row { display: flex; align-items: center; gap: 0.75rem; min-height: 64px; }
+.vt-brand { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 1.3rem; letter-spacing: -0.03em; color: var(--vt-ink); text-decoration: none; }
+.vt-brand small { display: block; font-size: 0.75rem; font-weight: 500; letter-spacing: 0; color: var(--vt-muted); margin-top: -2px; }
+.vt-icon-btn { position: relative; display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--vt-ink); background: transparent; border: 0; text-decoration: none; flex: none; }
+.vt-icon-btn:hover { background: var(--vt-green-50); color: var(--vt-ink); }
+.vt-search { position: relative; flex: 1 1 auto; min-width: 0; }
+.vt-search .form-control { padding-left: 2.75rem; border-radius: 999px; background: var(--vt-green-50); border-color: transparent; }
+.vt-search .form-control:focus { background: #fff; }
+.vt-search-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: var(--vt-muted); pointer-events: none; }
+.vt-navlinks { display: none; gap: 0.25rem; }
+.vt-navlinks a { padding: 0.5rem 0.9rem; border-radius: 999px; color: var(--vt-ink); text-decoration: none; font-weight: 500; }
+.vt-navlinks a:hover { background: var(--vt-green-50); }
+.vt-navlinks a.active { background: var(--vt-green-100); color: var(--vt-green-900); }
+/* Header items never wrap onto two lines; the search box gives way instead. */
+.vt-navlinks a, .vt-header .btn, .vt-brand { white-space: nowrap; }
+.vt-search { min-width: 8rem; }
+/* Narrower desktops: drop the least-used items so the header stays on one line (they remain in the footer). */
+@media (min-width: 768px) and (max-width: 1199.98px) {
+  .vt-header .vt-brand small, .vt-header .btn-primary.vt-desktop-only { display: none !important; }
+}
+@media (min-width: 768px) and (max-width: 991.98px) { .vt-navlinks a:nth-child(n+3) { display: none; } }
+.vt-desktop-only { display: none !important; }
+@media (min-width: 768px) {
+  .vt-navlinks { display: flex; }
+  .vt-search { max-width: 28rem; margin-left: auto; }
+  .vt-desktop-only { display: inline-flex !important; }
+  .vt-mobile-only { display: none !important; }
+}
+
+/* ---- Bottom tab bar (phones) ---- */
+.vt-tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1030; display: grid; grid-template-columns: repeat(5, 1fr); background: #fff; border-top: 1px solid var(--vt-line); padding-bottom: env(safe-area-inset-bottom); }
+.vt-tab { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: var(--vt-tabbar-h); font-size: 0.72rem; font-weight: 500; color: var(--vt-muted); text-decoration: none; background: none; border: 0; padding: 0; }
+.vt-tab:hover { color: var(--vt-ink); }
+.vt-tab.active { color: var(--vt-green-700); }
+.vt-tab.active::before { content: ''; position: absolute; top: 0; left: 50%; width: 28px; height: 3px; margin-left: -14px; border-radius: 0 0 3px 3px; background: var(--vt-green-600); }
+.vt-tab--primary { color: var(--vt-ink); }
+.vt-tab--primary.active::before { display: none; }
+.vt-tab--primary .vt-tab-disc { display: grid; place-items: center; width: 52px; height: 52px; margin-top: -20px; border-radius: 50%; background: var(--vt-green-600); color: var(--vt-lime); border: 4px solid #fff; box-shadow: var(--vt-shadow-md); transition: transform 0.15s var(--vt-ease); }
+.vt-tab--primary:active .vt-tab-disc { transform: scale(0.94); }
+.vt-count { position: absolute; top: 7px; left: calc(50% + 4px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--vt-coral); color: #fff; font-size: 0.68rem; font-weight: 600; line-height: 18px; text-align: center; }
+.vt-count--inline { position: static; display: inline-block; vertical-align: middle; margin-left: 0.35rem; }
+.vt-bump { animation: vt-bump 0.35s var(--vt-ease); }
+@keyframes vt-bump { 0% { transform: scale(1); } 40% { transform: scale(1.35); } 100% { transform: scale(1); } }
+@media (min-width: 768px) { .vt-tabbar { display: none; } }
+
+/* ---- Sticky action bar (product, basket, checkout) sits above the tab bar on phones ---- */
+.vt-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--vt-tabbar-h) + env(safe-area-inset-bottom)); z-index: 1025; background: #fff; border-top: 1px solid var(--vt-line); padding: 0.75rem 0; }
+.vt-bar--flush { bottom: env(safe-area-inset-bottom); }
+@media (min-width: 768px) {
+  .vt-bar { position: static; padding: 0; background: transparent; border: 0; box-shadow: none; }
+}
+
+/* ---- Swipe rail ---- */
+.vt-rail { display: flex; gap: 0.75rem; overflow-x: auto; scroll-snap-type: x proximity; margin-inline: -1rem; padding: 0.25rem 1rem 0.75rem; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.vt-rail::-webkit-scrollbar { display: none; }
+.vt-rail > * { flex: 0 0 auto; scroll-snap-align: start; scroll-margin-inline: 1rem; }
+
+/* ---- Chips ---- */
+.vt-chip { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 1rem; border-radius: 999px; border: 1px solid #d3dbd6; background: #fff; color: var(--vt-ink); font-weight: 500; font-size: 0.95rem; white-space: nowrap; text-decoration: none; cursor: pointer; transition: background-color 0.15s, border-color 0.15s, transform 0.12s var(--vt-ease); }
+.vt-chip:hover { border-color: var(--vt-green-600); color: var(--vt-ink); }
+.vt-chip:active { transform: scale(0.97); }
+.vt-chip.active, .vt-chip[aria-pressed='true'] { background: var(--vt-green-900); border-color: var(--vt-green-900); color: #fff; }
+
+/* ---- Cards ---- */
+.vt-card { display: block; background: #fff; border: 1px solid var(--vt-line); border-radius: var(--vt-radius); color: inherit; text-decoration: none; overflow: hidden; }
+a.vt-card, button.vt-card { transition: transform 0.15s var(--vt-ease), box-shadow 0.15s; }
+a.vt-card:hover { color: inherit; border-color: var(--vt-green-600); }
+a.vt-card:active, button.vt-card:active { transform: scale(0.985); }
+.vt-card--tint { background: var(--vt-green-50); border-color: transparent; }
+.vt-card--attention { background: var(--vt-warn-bg); border-color: transparent; color: var(--vt-warn-ink); }
+
+/* ---- Product card ---- */
+.vt-product { position: relative; display: flex; flex-direction: column; height: 100%; }
+.vt-product-img { position: relative; aspect-ratio: 4 / 3; background: var(--vt-green-50); }
+.vt-product-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-product-body { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem 0.85rem 0.9rem; flex: 1; }
+.vt-product-name { font-weight: 500; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
+.vt-product-media { position: absolute; left: 0; right: 0; top: 0; aspect-ratio: 4 / 3; pointer-events: none; }
+.vt-product-add { position: absolute; right: 0.6rem; bottom: 0.6rem; pointer-events: auto; width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--vt-green-600); color: #fff; border: 0; box-shadow: var(--vt-shadow-sm); transition: transform 0.12s var(--vt-ease), background-color 0.15s; }
+.vt-product-add:hover { background: var(--vt-green-700); }
+.vt-product-add:active { transform: scale(0.92); }
+.vt-product-add:disabled { background: #b9c4be; }
+.vt-price { font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.vt-price-was { color: var(--vt-muted); text-decoration: line-through; font-weight: 500; font-size: 0.85em; margin-left: 0.4rem; }
+.vt-deal { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 999px; background: var(--vt-coral); color: #fff; font-size: 0.75rem; font-weight: 600; }
+.vt-tag { position: absolute; left: 0.6rem; top: 0.6rem; padding: 0.2rem 0.6rem; border-radius: 999px; background: #fff; color: var(--vt-ink); font-size: 0.75rem; font-weight: 600; box-shadow: var(--vt-shadow-sm); }
+
+/* ---- Status pills (icon + words, never colour alone) ---- */
+.vt-pill { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 0.8rem; font-weight: 500; white-space: nowrap; background: var(--vt-green-50); color: var(--vt-ink); }
+.vt-pill--brand { background: var(--vt-green-100); color: var(--vt-green-900); }
+.vt-pill--success { background: var(--vt-green-100); color: var(--vt-green-900); }
+.vt-pill--info { background: #dcf0fb; color: #003c5e; }
+.vt-pill--warn { background: var(--vt-warn-bg); color: var(--vt-warn-ink); }
+.vt-pill--danger { background: #fde4e3; color: #6e0d10; }
+.vt-pill--done { background: #e6ebe8; color: #33403a; }
+
+/* ---- Quantity stepper ---- */
+.vt-qty { display: inline-flex; align-items: center; border: 1px solid #d3dbd6; border-radius: 999px; background: #fff; }
+.vt-qty button { width: 44px; height: 44px; display: grid; place-items: center; border: 0; background: transparent; color: var(--vt-ink); border-radius: 50%; }
+.vt-qty button:disabled { color: #9aa79f; }
+.vt-qty button:not(:disabled):hover { background: var(--vt-green-50); }
+.vt-qty output { min-width: 2rem; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- Segmented control (collect / delivery) and choice cards ---- */
+.vt-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; border-radius: 999px; background: var(--vt-green-50); }
+.vt-seg button { min-height: 44px; border: 0; border-radius: 999px; background: transparent; font-weight: 500; color: var(--vt-muted); transition: background-color 0.15s, color 0.15s; }
+.vt-seg button[aria-pressed='true'] { background: #fff; color: var(--vt-ink); box-shadow: var(--vt-shadow-sm); }
+.vt-choice { display: flex; align-items: center; gap: 0.75rem; padding: 0.9rem 1rem; border: 1px solid #d3dbd6; border-radius: var(--vt-radius); background: #fff; cursor: pointer; transition: border-color 0.15s, background-color 0.15s; }
+.vt-choice:hover { border-color: var(--vt-green-600); }
+.vt-choice:has(input:checked) { border-color: var(--vt-green-600); background: var(--vt-green-50); }
+.vt-choice input { flex: none; }
+
+/* ---- Skeletons ---- */
+.vt-skeleton { display: block; border-radius: 0.5rem; background: linear-gradient(90deg, var(--vt-green-50) 25%, #f6faf8 50%, var(--vt-green-50) 75%); background-size: 200% 100%; animation: vt-shimmer 1.4s linear infinite; }
+@keyframes vt-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---- Timeline (repair / trade-in progress) ---- */
+.vt-steps { list-style: none; margin: 0; padding: 0; }
+.vt-step { position: relative; display: flex; gap: 0.9rem; padding-bottom: 1.35rem; color: var(--vt-muted); }
+.vt-step:last-child { padding-bottom: 0; }
+.vt-step::before { content: ''; position: absolute; left: 13px; top: 28px; bottom: 0; width: 2px; background: var(--vt-line); }
+.vt-step:last-child::before { display: none; }
+.vt-step.is-done::before { background: var(--vt-green-600); }
+.vt-dot { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--vt-line); font-size: 0.75rem; font-weight: 600; z-index: 1; }
+.vt-step.is-done { color: var(--vt-ink); }
+.vt-step.is-done .vt-dot { background: var(--vt-green-600); border-color: var(--vt-green-600); color: #fff; }
+.vt-step.is-current { color: var(--vt-ink); font-weight: 600; }
+.vt-step.is-current .vt-dot { border-color: var(--vt-green-600); box-shadow: 0 0 0 3px rgb(0 120 71 / 0.12); color: var(--vt-green-700); }
+
+/* ---- Entrance (hero only) ---- */
+@keyframes vt-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.vt-rise { animation: vt-rise 0.55s var(--vt-ease) both; }
+.vt-rise-2 { animation-delay: 0.08s; }
+.vt-rise-3 { animation-delay: 0.16s; }
+
+/* Toasts must clear the tab bar on phones */
+@media (max-width: 767.98px) { .vt-toaster { bottom: calc(var(--vt-tabbar-h) + 1rem) !important; } }
+
+/* ---- Footer ---- */
+.vt-foot-link { color: rgb(255 255 255 / 0.9); text-decoration: none; display: inline-block; padding: 0.25rem 0; }
+.vt-foot-link:hover { color: var(--vt-lime); text-decoration: underline; }
+.vt-footer-pad { padding-bottom: calc(var(--vt-tabbar-h) + env(safe-area-inset-bottom) + 2rem) !important; }
+@media (min-width: 768px) { .vt-footer-pad { padding-bottom: 3rem !important; } }
+
+/* ---- Home: drenched hero and bands ---- */
+.vt-hero { position: relative; overflow: hidden; background: var(--vt-green-600); color: #fff; border-radius: 0 0 2rem 2rem; padding: 1.25rem 0 2.25rem; isolation: isolate; }
+.vt-hero::before { content: ''; position: absolute; z-index: -1; width: 22rem; height: 22rem; right: -9rem; top: -7rem; border-radius: 50%; background: var(--vt-green-500); opacity: 0.28; }
+.vt-hero-title { font-size: clamp(2.5rem, 9.5vw, 4.25rem); font-weight: 700; line-height: 1.02; letter-spacing: -0.03em; color: #fff; margin: 0 0 0.9rem; }
+.vt-hero-sub { font-size: 1.125rem; color: rgb(255 255 255 / 0.92); max-width: 36ch; margin-bottom: 1.5rem; }
+.vt-hero-branch { display: inline-flex; align-items: center; gap: 0.4rem; min-height: 44px; padding: 0 1rem 0 0.8rem; margin-bottom: 1.1rem; border: 0; border-radius: 999px; background: var(--vt-green-700); color: #fff; font-weight: 500; font-size: 0.95rem; }
+.vt-hero-branch:hover { background: var(--vt-green-900); color: #fff; }
+.vt-hero-img { position: relative; border-radius: 1.5rem; overflow: hidden; aspect-ratio: 16 / 11; background: var(--vt-green-700); }
+.vt-hero-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-hero-note { position: absolute; left: 0.75rem; right: 0.75rem; bottom: 0.75rem; display: flex; align-items: center; gap: 0.6rem; padding: 0.65rem 0.9rem; border-radius: 1rem; background: #fff; color: var(--vt-ink); font-size: 0.9rem; font-weight: 500; box-shadow: var(--vt-shadow-md); }
+@media (min-width: 992px) {
+  .vt-hero { padding: 3rem 0 3.5rem; border-radius: 0 0 2.5rem 2.5rem; }
+  .vt-hero-img { aspect-ratio: 5 / 4; }
+}
+
+.vt-band { background: var(--vt-green-900); color: #fff; border-radius: 1.75rem; overflow: hidden; }
+.vt-band p { color: rgb(255 255 255 / 0.9); }
+.vt-band-img { aspect-ratio: 16 / 9; }
+.vt-band-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (min-width: 768px) { .vt-band-img { aspect-ratio: auto; height: 100%; min-height: 16rem; } }
+
+/* Category tiles */
+.vt-tile { width: 8.25rem; text-decoration: none; color: var(--vt-ink); }
+.vt-tile-img { aspect-ratio: 1; border-radius: 1.25rem; overflow: hidden; background: var(--vt-green-50); margin-bottom: 0.5rem; transition: transform 0.15s var(--vt-ease); }
+.vt-tile:active .vt-tile-img { transform: scale(0.97); }
+.vt-tile-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-tile span { font-weight: 500; font-size: 0.95rem; }
+.vt-rail > .vt-productwrap { width: 11.5rem; }
+.vt-issue { gap: 0.6rem; }
+
+/* ---- Shop: sticky filter bar, full-bleed product media ---- */
+.vt-filterbar { position: sticky; top: 65px; z-index: 1010; background: var(--vt-surface); margin-inline: -1rem; padding: 0.5rem 1rem 0.25rem; }
+.vt-filterbar .vt-rail { padding-bottom: 0.5rem; margin-bottom: 0; }
+.vt-bleed { margin-inline: -1rem; } /* matches the 16px container padding; Bootstrap rows redefine --bs-gutter-x, so no variable here */
+@media (min-width: 768px) { .vt-bleed { margin-inline: 0; } }
+.vt-gallery { aspect-ratio: 4 / 3; background: var(--vt-green-50); overflow: hidden; }
+.vt-gallery img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (min-width: 768px) { .vt-gallery { border-radius: var(--vt-radius-lg); } }
+.vt-line { display: grid; grid-template-columns: 5.5rem 1fr; gap: 0.9rem; padding: 1rem 0; border-bottom: 1px solid var(--vt-line); }
+.vt-line:last-child { border-bottom: 0; }
+.vt-line-img { width: 5.5rem; aspect-ratio: 1; border-radius: 0.9rem; overflow: hidden; background: var(--vt-green-50); }
+.vt-line-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.vt-check { width: 4.5rem; height: 4.5rem; border-radius: 50%; display: grid; place-items: center; background: var(--vt-green-600); color: var(--vt-lime); margin: 0 auto 1rem; }
+.vt-section-title { display: flex; align-items: center; gap: 0.6rem; font-size: 1.05rem; font-weight: 600; margin-bottom: 0.9rem; }
+.vt-section-title .vt-dot { width: 26px; height: 26px; background: var(--vt-green-600); border-color: var(--vt-green-600); color: #fff; }
+
+/* Disclosure with a chevron (details/summary keeps keyboard and screen-reader behaviour for free) */
+.vt-sum { display: flex; align-items: center; justify-content: space-between; min-height: 44px; font-weight: 500; cursor: pointer; list-style: none; }
+.vt-sum::-webkit-details-marker { display: none; }
+.vt-sum::after { content: ''; width: 10px; height: 10px; margin-right: 4px; border-right: 2px solid var(--vt-muted); border-bottom: 2px solid var(--vt-muted); transform: rotate(45deg); transition: transform 0.2s var(--vt-ease); }
+details[open] > .vt-sum::after { transform: rotate(-135deg); }
+
+/* ---- List rows (phones): one tappable row per repair, order or trade-in ---- */
+.vt-row { display: flex; align-items: center; gap: 0.9rem; padding: 0.9rem 1rem; }
+.vt-row-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--vt-green-100); color: var(--vt-green-700); }
+.vt-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.vt-row-main strong, .vt-row-main > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vt-row-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 0.35rem; color: var(--vt-muted); }
+
+/* ---- Staff/admin sidebar ---- */
+.vt-side { width: 15rem; flex: none; background: #fff; border-right: 1px solid var(--vt-line); padding: 1rem 0.75rem; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+.vt-side a, .vt-side button.vt-side-link { display: flex; align-items: center; gap: 0.75rem; min-height: 44px; padding: 0 0.85rem; border-radius: 0.85rem; color: var(--vt-ink); font-weight: 500; text-decoration: none; background: none; border: 0; width: 100%; text-align: left; }
+.vt-side a:hover, .vt-side button.vt-side-link:hover { background: var(--vt-green-50); }
+.vt-side a.active { background: var(--vt-green-100); color: var(--vt-green-900); }
+.vt-side .vt-side-label { font-size: 0.75rem; font-weight: 500; color: var(--vt-muted); padding: 1rem 0.85rem 0.25rem; }
+
+/* ---- Customer home: quick action tiles ---- */
+.vt-tilebtn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem; min-height: 5.5rem; padding: 0.75rem 0.5rem; border-radius: 1.25rem; border: 1px solid #d3dbd6; background: #fff; color: var(--vt-ink); font-weight: 500; font-size: 0.9rem; text-align: center; text-decoration: none; transition: transform 0.12s var(--vt-ease), border-color 0.15s; }
+.vt-tilebtn:hover { border-color: var(--vt-green-600); color: var(--vt-ink); }
+.vt-tilebtn:active { transform: scale(0.97); }
+.vt-tilebtn--fill { background: var(--vt-green-600); border-color: var(--vt-green-600); color: #fff; }
+.vt-tilebtn--fill:hover { background: var(--vt-green-700); border-color: var(--vt-green-700); color: #fff; }
+
+/* Small helpers Bootstrap does not ship */
+.flex-none { flex: none; }
+.min-w-0 { min-width: 0; }
+
+/* On wide screens the branch list scrolls beside the map instead of making the page tall */
+@media (min-width: 992px) { .vt-scroll-lg { max-height: calc(100vh - 11rem); overflow-y: auto; padding: 2px; margin: -2px; } }
+/* Fingers need 44px even on the smaller buttons */
+@media (pointer: coarse) { .btn-sm { min-height: 44px; } }

@@ -1,0 +1,32 @@
+{
+  "name": "virktech-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file=.env index.js",
+    "start": "node --env-file-if-exists=.env index.js",
+    "migrate": "node --env-file-if-exists=.env migrate.js",
+    "seed": "node --env-file=.env seed.js",
+    "seed:starter": "node --env-file-if-exists=.env seed.js starter",
+    "create-admin": "node --env-file-if-exists=.env create-admin.js",
+    "test": "node --env-file=.env.test ./node_modules/vitest/vitest.mjs run"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^4.22.3",
+    "express-rate-limit": "^8.7.1",
+    "express-validator": "^7.3.2",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "supertest": "^7.3.1",
+    "vitest": "^5.0.5"
+  },
+  "engines": {
+    "node": ">=20.18"
+  }
+}

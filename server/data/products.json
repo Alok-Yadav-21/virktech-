@@ -1,0 +1,274 @@
+[
+  {
+    "brand": "Apple",
+    "name": "MacBook Air 13\" (refurbished)",
+    "category": "MacBooks",
+    "price": 749,
+    "condition": "Refurbished",
+    "image": "/img/macbook.jpg",
+    "description": "Apple M1, 8GB memory, 256GB SSD. Diagnostic-checked, battery health above 85%, cleaned and reset by our technicians. Light marks on the lid consistent with normal use. Includes a 3-month warranty and a charger."
+  },
+  {
+    "brand": "Apple",
+    "name": "MacBook Pro 14\"",
+    "category": "MacBooks",
+    "price": 1299,
+    "condition": "Used",
+    "image": "/img/macbook-pro.jpg",
+    "description": "M1 Pro, 16GB memory, 512GB SSD. A trade-in from a customer, fully wiped and tested. Screen and body in very good condition; the underside has a few small scuffs. Charger included."
+  },
+  {
+    "brand": "Apple",
+    "name": "MacBook Air 15\" (M2)",
+    "category": "MacBooks",
+    "price": 1049,
+    "condition": "New",
+    "wasPrice": 1149,
+    "image": "/img/macbook-air-m2.jpg",
+    "description": "Sealed, current-generation M2 with 8GB memory and a 256GB SSD. Full manufacturer warranty, and we will transfer your data from an old machine free of charge when you collect."
+  },
+  {
+    "brand": "Apple",
+    "name": "iPhone 14 - 128GB",
+    "category": "iPhones",
+    "price": 579,
+    "condition": "Used",
+    "image": "/img/iphone.jpg",
+    "description": "Unlocked to all networks, 128GB, battery health 89%. Glass front and back are clean with no cracks; the frame shows light wear at the corners. Sold with a charging cable and a 30-day return."
+  },
+  {
+    "brand": "Apple",
+    "name": "iPhone 13 - 128GB",
+    "category": "iPhones",
+    "price": 449,
+    "condition": "Refurbished",
+    "wasPrice": 499,
+    "image": "/img/iphone-trio.jpg",
+    "description": "Unlocked, 128GB, in three colours. Every unit is opened, tested against our 40-point check, and fitted with a new battery if health is below 85%. Three-month warranty included."
+  },
+  {
+    "brand": "Samsung",
+    "name": "Samsung Galaxy S23",
+    "category": "Smartphones",
+    "price": 529,
+    "condition": "Used",
+    "image": "/img/samsung.jpg",
+    "description": "256GB, unlocked, available in phantom black, green, cream or lavender. Screens are original Samsung panels with no burn-in. Minor edge wear on some units - ask the branch which colours are in stock."
+  },
+  {
+    "brand": "Google",
+    "name": "Google Pixel 7",
+    "category": "Smartphones",
+    "price": 329,
+    "condition": "Refurbished",
+    "image": "/img/pixel.jpg",
+    "description": "128GB, unlocked, with Google’s camera processing and guaranteed OS updates into 2028. Refurbished in branch: new screen protector, tested cameras and charging port, three-month warranty."
+  },
+  {
+    "brand": "Acer",
+    "name": "Ultrabook 14\"",
+    "category": "Laptops",
+    "price": 699,
+    "condition": "New",
+    "image": "/img/laptop.jpg",
+    "description": "Intel Core i5, 16GB memory, 512GB SSD, all-day battery in a sub-1.4kg chassis. A sensible everyday laptop for study or office work. Windows 11 installed and updated before collection."
+  },
+  {
+    "brand": "Dell",
+    "name": "Dell XPS 13",
+    "category": "Laptops",
+    "price": 849,
+    "condition": "Refurbished",
+    "image": "/img/dell-xps.jpg",
+    "description": "Core i7, 16GB memory, 512GB SSD with a near-borderless display. Ex-business stock, professionally refurbished: new battery, replaced keyboard, clean Windows install. Three-month warranty."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Gaming Laptop 15.6\" RTX",
+    "category": "Laptops",
+    "price": 1149,
+    "condition": "New",
+    "wasPrice": 1299,
+    "image": "/img/gaming-laptop.jpg",
+    "description": "Ryzen 7 with an RTX graphics card, 16GB memory, 1TB SSD and a 144Hz screen. Built for gaming and video work. We will fit extra memory or storage at cost while you wait."
+  },
+  {
+    "brand": "Apple",
+    "name": "iPad Air (refurbished)",
+    "category": "Tablets",
+    "price": 429,
+    "condition": "Refurbished",
+    "image": "/img/tablet-ipad.jpg",
+    "description": "10.9-inch, 64GB, Wi-Fi. Battery replaced where it fell below 85%, screen checked for dead pixels, and reset to factory settings. Apple Pencil sold separately. Three-month warranty."
+  },
+  {
+    "brand": "Samsung",
+    "name": "Galaxy Tab S9",
+    "category": "Tablets",
+    "price": 379,
+    "condition": "New",
+    "wasPrice": 429,
+    "image": "/img/tablet-android.jpg",
+    "description": "11-inch AMOLED, 128GB, Wi-Fi, with the S Pen included in the box. Sealed and covered by the full manufacturer warranty. A good pairing with a Galaxy phone for notes and drawing."
+  },
+  {
+    "brand": "Apple",
+    "name": "iPad mini 6",
+    "category": "Tablets",
+    "price": 319,
+    "condition": "Used",
+    "image": "/img/tablet-mini.jpg",
+    "description": "8.3-inch, 64GB, Wi-Fi. A customer trade-in, wiped and tested. Screen is unmarked; the aluminium back has a small dent at one corner, which is why it is priced below our refurbished stock."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Over-ear Headphones",
+    "category": "Audio",
+    "price": 129,
+    "condition": "New",
+    "wasPrice": 149,
+    "image": "/img/headphones.jpg",
+    "description": "Active noise cancelling, around 30 hours of battery, Bluetooth 5.3 with a wired option for flights. Folds flat into the case supplied. Try a pair at the counter before you buy."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Wireless Earbuds Pro",
+    "category": "Audio",
+    "price": 99,
+    "condition": "New",
+    "wasPrice": 129,
+    "image": "/img/earbuds.jpg",
+    "description": "In-ear noise cancelling with a wireless charging case, roughly 6 hours per charge and 24 with the case. IPX4 water resistant, so fine for the gym and the rain. Three ear-tip sizes included."
+  },
+  {
+    "brand": "Virktech",
+    "name": "True Wireless Earbuds",
+    "category": "Audio",
+    "price": 59,
+    "condition": "New",
+    "image": "/img/earpods.jpg",
+    "description": "A straightforward everyday pair with a compact charging case and USB-C. No noise cancelling at this price, but clear call quality and a secure fit. Popular as a spare set or a first pair."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Bluetooth Speaker",
+    "category": "Audio",
+    "price": 59,
+    "condition": "New",
+    "image": "/img/speaker.jpg",
+    "description": "Portable, IPX7 waterproof, about 12 hours of playback, and it pairs with a second unit for stereo. Survives a garden, a beach and a bathroom shelf. Charges over USB-C."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Smartwatch Series X",
+    "category": "Wearables",
+    "price": 199,
+    "condition": "New",
+    "image": "/img/watch.jpg",
+    "description": "Heart rate, sleep and workout tracking with GPS, on a two-day battery. Sealed, with a spare strap in the box. Pairs with both iPhone and Android - tell us which and we will set it up."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Fitness Band",
+    "category": "Wearables",
+    "price": 39,
+    "condition": "New",
+    "wasPrice": 49,
+    "image": "/img/fitness-band.jpg",
+    "description": "Step, heart rate and sleep tracking with two weeks of battery between charges. Light enough to wear overnight. A sensible first tracker, and the cheapest way to see if you will use one."
+  },
+  {
+    "brand": "Virktech",
+    "name": "USB-C Fast Charging Cable",
+    "category": "Accessories",
+    "price": 12,
+    "condition": "New",
+    "image": "/img/charger.jpg",
+    "description": "Braided 2-metre USB-C cable rated for 60W, so it charges a phone, a tablet and most laptops. Tested to survive being wound round a plug. Twelve-month replacement if it fails."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Power Bank 20,000mAh",
+    "category": "Accessories",
+    "price": 34,
+    "condition": "New",
+    "wasPrice": 44,
+    "image": "/img/powerbank.jpg",
+    "description": "Enough for roughly four phone charges, with fast charging on two ports at once and a USB-C input. Airline-safe capacity. Worth having in a bag before a long day rather than after one."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Protective Phone Case",
+    "category": "Accessories",
+    "price": 15,
+    "condition": "New",
+    "image": "/img/phone-case.jpg",
+    "description": "Shock-absorbing case with a raised lip over the screen and camera, in four colours. We stock cases for most recent iPhone and Galaxy models - bring your phone in and we will match it."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Wireless Mouse",
+    "category": "Accessories",
+    "price": 19,
+    "condition": "New",
+    "image": "/img/mouse.jpg",
+    "description": "Silent-click wireless mouse with a USB-C rechargeable battery that lasts about two months. Works on glass and fabric. Pairs over Bluetooth or the bundled dongle, so it suits an older laptop too."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Wireless Keyboard",
+    "category": "Accessories",
+    "price": 29,
+    "condition": "New",
+    "wasPrice": 35,
+    "image": "/img/keyboard.jpg",
+    "description": "Low-profile UK-layout keyboard, Bluetooth to three devices at once with a key to switch between them. Runs months on a charge. Handy if you use a laptop docked at a desk."
+  },
+  {
+    "brand": "Virktech",
+    "name": "Laptop Sleeve 13-14\"",
+    "category": "Accessories",
+    "price": 22,
+    "condition": "New",
+    "image": "/img/laptop-sleeve.jpg",
+    "description": "Padded felt sleeve that fits a 13 to 14-inch laptop, with a pocket for a charger. Slips inside a rucksack rather than replacing one. The cheapest way to stop the scuffs we see most often."
+  },
+  {
+    "brand": "Apple",
+    "name": "Apple Watch Series 9",
+    "category": "Wearables",
+    "price": 329,
+    "condition": "Refurbished",
+    "image": "/img/apple-watch.jpg",
+    "description": "41mm GPS, aluminium case with a sport band. Refurbished in branch: new battery where health was below 85%, screen checked, and reset. Pairs with iPhone only. Three-month warranty."
+  },
+  {
+    "brand": "Apple",
+    "name": "AirPods Pro (2nd gen)",
+    "category": "Audio",
+    "price": 179,
+    "condition": "Used",
+    "wasPrice": 229,
+    "image": "/img/airpods.jpg",
+    "description": "Active noise cancelling with the MagSafe charging case. A trade-in: both buds tested and sanitised, case holds charge normally. Ear tips are new. Sold with a 30-day return."
+  },
+  {
+    "brand": "Sony",
+    "name": "Sony On-ear Headphones",
+    "category": "Audio",
+    "price": 35,
+    "condition": "New",
+    "image": "/img/sony-headphones.jpg",
+    "description": "Lightweight wired on-ear pair with a 3.5mm jack - no charging, no pairing, nothing to go flat. Folds for a bag. A sensible spare set, and it still works with a laptop or a mixing desk."
+  },
+  {
+    "brand": "Lenovo",
+    "name": "ThinkPad T-series 15\"",
+    "category": "Laptops",
+    "price": 579,
+    "condition": "Refurbished",
+    "wasPrice": 649,
+    "image": "/img/thinkpad.jpg",
+    "description": "Core i5, 16GB memory, 512GB SSD. Ex-corporate stock with the keyboard ThinkPads are bought for. Refurbished here: new battery, clean Windows 11 install, ports and fingerprint reader tested. Three-month warranty."
+  }
+]

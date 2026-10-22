@@ -1,0 +1,66 @@
+[
+  {
+    "name": "Smart Phones Repair",
+    "area": "Belvedere",
+    "address": "25 Nuxley Road",
+    "postcode": "DA17 5JE",
+    "lat": 51.49,
+    "lng": 0.17
+  },
+  {
+    "name": "Virk Tech & Keys",
+    "area": "Sidcup",
+    "address": "263 Westwood Lane",
+    "postcode": "DA15 9PS",
+    "lat": 51.43,
+    "lng": 0.1
+  },
+  {
+    "name": "Smart Phones Repair",
+    "area": "New Eltham",
+    "address": "371 Footscray Road",
+    "postcode": "SE9 2DR",
+    "lat": 51.44,
+    "lng": 0.07
+  },
+  {
+    "name": "Station Approach",
+    "area": "New Eltham - Station Approach",
+    "address": "1 Station Approach",
+    "postcode": "SE9 2AB",
+    "lat": 51.44,
+    "lng": 0.05
+  },
+  {
+    "name": "Smart Phones Repair",
+    "area": "Orpington",
+    "address": "74 Cotmandene Crescent",
+    "postcode": "BR5 2RG",
+    "lat": 51.38,
+    "lng": 0.1
+  },
+  {
+    "name": "Smart Phones Repair",
+    "area": "Woolwich",
+    "address": "1B Woolwich New Road",
+    "postcode": "SE18 6EX",
+    "lat": 51.49,
+    "lng": 0.06
+  },
+  {
+    "name": "Beresford Square",
+    "area": "Woolwich - Beresford Square",
+    "address": "18A Beresford Square",
+    "postcode": "SE18 6AY",
+    "lat": 51.49,
+    "lng": 0.07
+  },
+  {
+    "name": "Herbert Road",
+    "area": "Woolwich - Herbert Road",
+    "address": "27A Herbert Road",
+    "postcode": "SE18 3TB",
+    "lat": 51.48,
+    "lng": 0.06
+  }
+]

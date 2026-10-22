@@ -1,0 +1,50 @@
+[
+  {
+    "title": "iPhone repairs",
+    "description": "Screens, batteries, charging ports, cameras and more.",
+    "icon": "smartphone",
+    "basePrice": 0
+  },
+  {
+    "title": "Smartphone repairs",
+    "description": "Android & all major brands - fast, warranty-backed fixes.",
+    "icon": "smartphone",
+    "basePrice": 0
+  },
+  {
+    "title": "Laptop repairs",
+    "description": "Screens, keyboards, batteries, SSD/RAM upgrades, OS.",
+    "icon": "laptop",
+    "basePrice": 0
+  },
+  {
+    "title": "MacBook repairs",
+    "description": "Air & Pro - diagnostics, battery, board-level repair.",
+    "icon": "laptop",
+    "basePrice": 0
+  },
+  {
+    "title": "Tablet repairs",
+    "description": "iPad & Android tablets - glass, battery, charging.",
+    "icon": "tablet",
+    "basePrice": 0
+  },
+  {
+    "title": "Audio device repairs",
+    "description": "Headphones, earbuds & speakers - support & fixes.",
+    "icon": "headphones",
+    "basePrice": 0
+  },
+  {
+    "title": "Wearables & accessories",
+    "description": "Smartwatches and accessory support.",
+    "icon": "watch",
+    "basePrice": 0
+  },
+  {
+    "title": "Diagnostics & data",
+    "description": "Free diagnostics, data recovery and transfer.",
+    "icon": "wrench",
+    "basePrice": 0
+  }
+]
