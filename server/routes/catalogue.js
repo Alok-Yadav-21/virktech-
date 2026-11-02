@@ -14,7 +14,7 @@ export const services = crud({
 
 // Stock is per branch (see routes/stock.js); products only report the total across active branches.
 export const products = crud({
-  table: 'products', required: ['name', 'categoryId', 'price'], order: 't.id', softDelete: true,
+  table: 'products', required: ['name', 'categoryId', 'price', 'costPrice'], order: 't.id', softDelete: true,
   join: 'JOIN categories c ON c.id = t.category_id',
   extra: `, c.name AS category,
     COALESCE((SELECT sum(s.stock) FROM branch_stock s JOIN branches b ON b.id = s.branch_id AND b.active = true WHERE s.product_id = t.id), 0)::int AS "stockTotal"`,
@@ -22,6 +22,7 @@ export const products = crud({
     name: 'name', brand: 'brand', categoryId: 'category_id', price: 'price', wasPrice: 'was_price',
     condition: 'condition', image: 'image', description: 'description', active: 'active',
   },
+  adminFields: { costPrice: 'cost_price' }, // what the shop paid for stock that came in before deliveries were recorded
   // Which branches have it, so a customer knows where they can collect. Registered before /:id.
   setup: (router) => router.get('/:id/availability', wrap(async (req, res) => {
     if (!Number.isInteger(+req.params.id)) throw fail(404, 'Not found')
@@ -39,6 +40,8 @@ export const branches = crud({
     name: 'name', area: 'area', address: 'address', postcode: 'postcode',
     lat: 'lat', lng: 'lng', phone: 'phone', active: 'active',
   },
+  // Admin list only: who works here (names, not PINs).
+  adminExtra: `, COALESCE((SELECT json_agg(u.name ORDER BY u.name) FROM users u WHERE u.branch_id = t.id AND u.role = 'staff' AND u.active), '[]'::json) AS staff`,
   // Must be registered before /:id. postcodes.io needs no API key.
   setup: (router) => router.get('/nearest', wrap(async (req, res) => {
     const postcode = String(req.query.postcode || '').trim().slice(0, 12)

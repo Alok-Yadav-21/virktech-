@@ -3,9 +3,15 @@ import { query } from '../db.js'
 import { protect, requireRole } from '../middleware/auth.js'
 import { fail, wrap } from '../utils/validate.js'
 import { branchFor } from '../utils/scope.js'
+import { lowestBranchId } from '../utils/lowestBranch.js'
 
 const router = Router()
 router.use(protect, requireRole('staff', 'admin'))
+
+// Admin: the branch to show first on the Stock page.
+router.get('/lowest-branch', requireRole('admin'), wrap(async (req, res) => {
+  res.json({ branchId: await lowestBranchId('products', 'branch_stock') })
+}))
 
 // Every active product with this branch's count (0 when no count has been entered yet).
 router.get('/', wrap(async (req, res) => {
@@ -13,7 +19,7 @@ router.get('/', wrap(async (req, res) => {
   const { rows } = await query(
     `SELECT p.id AS "productId", p.name, p.brand, p.condition, COALESCE(s.stock, 0)::int AS stock
      FROM products p LEFT JOIN branch_stock s ON s.product_id = p.id AND s.branch_id = $1
-     WHERE p.active = true ORDER BY p.name`, [branchId])
+     WHERE p.active = true ORDER BY stock, p.name`, [branchId])
   res.json(rows)
 }))
 

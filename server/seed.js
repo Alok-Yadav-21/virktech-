@@ -31,8 +31,9 @@ export async function seedStarter(db = pool) {
   const productIds = []
   for (const p of products) {
     const { rows } = await db.query(
-      `INSERT INTO products (name, brand, category_id, price, was_price, condition, image, description)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
+      // Demo bought-for price is 70% of the shop price, so the profit page has no gaps.
+      `INSERT INTO products (name, brand, category_id, price, was_price, condition, image, description, cost_price)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8, round($4::numeric * 0.7, 2)) RETURNING id`,
       [p.name, p.brand, cats[p.category], p.price, p.wasPrice ?? null, p.condition, p.image, p.description])
     productIds.push(rows[0].id)
   }
@@ -44,7 +45,7 @@ async function assertSafeToReset(force) {
   if (process.env.NODE_ENV === 'production') throw new Error('Refusing to run: NODE_ENV=production. The demo seed wipes the database.')
   const { rows: [t] } = await pool.query("SELECT to_regclass('public.users') AS t")
   if (!t.t) return
-  const { rows: [r] } = await pool.query("SELECT count(*) AS n FROM users WHERE email NOT LIKE '%@demo.com'")
+  const { rows: [r] } = await pool.query("SELECT count(*) AS n FROM users WHERE email NOT LIKE '%@demo.com' AND email <> $1", ['walk-in@till.local'])
   if (r.n > 0 && !force) {
     throw new Error(`Refusing to run: ${r.n} non-demo user(s) exist, so this looks like real data. Re-run with --force only if you are certain.`)
   }
@@ -64,9 +65,9 @@ export async function seedDemo({ force = false } = {}) {
   const ids = {}
   for (const u of [
     { name: 'Demo Customer', email: 'customer@demo.com', role: 'customer' },
-    { name: 'Demo Staff', email: 'staff@demo.com', role: 'staff', branchId: branches.Belvedere },
+    { name: 'Demo Staff', role: 'staff', branchId: branches.Belvedere, pin: '1234', dailyWage: 80, noPassword: true },
     { name: 'Demo Admin', email: 'admin@demo.com', role: 'admin' },
-  ]) ids[u.role] = (await createUser({ ...u, password: 'Password123!' })).id
+  ]) ids[u.role] = (await createUser({ ...u, password: u.noPassword ? null : 'Password123!' })).id
   await seedVapesDemo(pool, branches, ids.customer)
 }
 
@@ -78,7 +79,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       console.log('Loaded starter branches, services, categories and products (no stock). Next: npm run create-admin')
     } else {
       await seedDemo({ force: process.argv.includes('--force') })
-      console.log('Demo database ready. Logins: customer@demo.com, staff@demo.com, admin@demo.com (Password123!)')
+      console.log('Demo database ready. Logins: customer@demo.com, admin@demo.com (Password123!); staff PIN 1234 at /staff-login')
     }
   } catch (e) {
     console.error(e.message)

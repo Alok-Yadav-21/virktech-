@@ -10,7 +10,9 @@ export default function VapeStock() {
   const { user } = useAuth()
   const admin = user.role === 'admin'
   const { data: branches } = useFetch(admin ? '/branches' : null)
-  const [branchId, setBranchId] = useState('')
+  const lowest = useFetch(admin ? '/vapes/stock/lowest-branch' : null) // admin opens on the branch that needs stock most
+  const [picked, setPicked] = useState('')
+  const branchId = picked || String(lowest.data?.branchId ?? '')
   const url = admin ? (branchId ? `/vapes/stock?branchId=${branchId}` : null) : '/vapes/stock'
 
   return (
@@ -18,13 +20,12 @@ export default function VapeStock() {
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h1 className="h3 mb-0">Vape stock</h1>
         {admin && (
-          <select className="form-select w-auto" aria-label="Branch" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-            <option value="">Choose a branch…</option>
-            {branches?.map((b) => <option key={b.id} value={b.id}>{b.area}</option>)}
+          <select className="form-select w-auto" aria-label="Branch" value={branchId} onChange={(e) => setPicked(e.target.value)}>
+            {branches?.map((b) => <option key={b.id} value={b.id}>{b.area}{b.id === lowest.data?.branchId ? ' (lowest stock)' : ''}</option>)}
           </select>
         )}
       </div>
-      {url ? <StockTable key={url} url={url} branchId={admin ? Number(branchId) : undefined} /> : <p className="text-secondary">Choose a branch to see its stock.</p>}
+      {url ? <StockTable key={url} url={url} branchId={admin ? Number(branchId) : undefined} /> : <div className="spinner-border" />}
     </>
   )
 }

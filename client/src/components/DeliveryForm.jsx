@@ -42,7 +42,7 @@ export default function DeliveryForm({ initial, onSubmit, onHide }) {
   }
 
   return (
-    <Modal show onHide={onHide} fullscreen="md-down" size="lg" scrollable centered>
+    <Modal show onHide={onHide} fullscreen="lg-down" size="xl" scrollable centered>
       {/* The form sits between modal-content and modal-body, so it must be the flex column that lets the body scroll. */}
       <form onSubmit={submit} className="d-flex flex-column overflow-hidden" style={{ minHeight: 0, flex: '1 1 auto' }}>
         <Modal.Header closeButton><Modal.Title>{editing ? `Edit ${initial.reference}` : 'Record a delivery'}</Modal.Title></Modal.Header>
@@ -99,7 +99,7 @@ export default function DeliveryForm({ initial, onSubmit, onHide }) {
                   <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2 small">
                     <span className="text-secondary">
                       {sell == null ? 'Choose a product to compare prices.'
-                        : <>Sells at {gbp(sell)}{each != null && <> · <span className={each < 0 ? 'text-danger' : ''}>{each < 0 ? 'loss' : 'profit'} {gbp(Math.abs(each))} each</span></>}</>}
+                        : <>Sells at {gbp(sell)}{admin && each != null && <> · <span className={each < 0 ? 'text-danger' : ''}>{each < 0 ? 'loss' : 'profit'} {gbp(Math.abs(each))} each</span></>}</>}
                     </span>
                     <span className="d-inline-flex align-items-center gap-2">
                       {Number(l.qty) > 0 && l.unitCost !== '' && <span>Line total {gbp(money(Number(l.qty) * cost))}</span>}

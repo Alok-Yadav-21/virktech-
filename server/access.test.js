@@ -7,9 +7,17 @@ import { createUser } from './utils/users.js'
 // Role-access and scope checks against the real database. Needs `npm run seed` first (demo users).
 // Temporary users and records are created here and removed in afterAll.
 const PW = 'Password123!'
-const TEMP = { sidcup: 'access-sidcup@test.local', other: 'access-other@test.local' }
+const TEMP = { other: 'access-other@test.local' }
+const SIDCUP_PIN = '9001'
 const refs = { repair: null, tradeIn: null, order: null }
 const as = {}
+
+async function loginPin(pin) {
+  const agent = request.agent(app)
+  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  expect(r.status, `pin login ${pin}`).toBe(200)
+  return agent
+}
 
 async function login(email) {
   const agent = request.agent(app)
@@ -22,13 +30,13 @@ beforeAll(async () => {
   const { rows: [blv] } = await query("SELECT id FROM branches WHERE area = 'Belvedere'")
   const { rows: [sid] } = await query("SELECT id FROM branches WHERE area = 'Sidcup'")
   await cleanup() // in case an earlier run died half way
-  await createUser({ name: 'Access Sidcup', email: TEMP.sidcup, role: 'staff', branchId: sid.id, password: PW })
+  await createUser({ name: 'Access Sidcup', role: 'staff', branchId: sid.id, pin: SIDCUP_PIN })
   await createUser({ name: 'Access Other', email: TEMP.other, password: PW })
 
   as.customer = await login('customer@demo.com')
-  as.staff = await login('staff@demo.com') // Belvedere
+  as.staff = await loginPin('1234') // Belvedere
   as.admin = await login('admin@demo.com')
-  as.sidcup = await login(TEMP.sidcup)
+  as.sidcup = await loginPin(SIDCUP_PIN)
   as.other = await login(TEMP.other)
 
   const repair = await as.customer.post('/api/repairs').send({ branchId: blv.id, device: { model: 'Access test' }, problem: 'x', fulfilment: 'in_store' })
@@ -49,7 +57,7 @@ async function cleanup() {
   await query('DELETE FROM orders WHERE reference = $1', [refs.order])
   const emails = Object.values(TEMP)
   await query('DELETE FROM loyalty_entries WHERE user_id IN (SELECT id FROM users WHERE email = ANY($1))', [emails])
-  await query('DELETE FROM users WHERE email = ANY($1)', [emails])
+  await query('DELETE FROM users WHERE email = ANY($1) OR pin = $2', [emails, SIDCUP_PIN])
 }
 
 afterAll(async () => {

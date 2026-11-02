@@ -51,22 +51,25 @@ router.get('/stats', protect, wrap(async (req, res) => {
   // Low stock = active product/branch pairs at 3 or fewer (a missing count is zero), within the caller's scope.
   const low = user.role === 'admin' ? { sql: 'TRUE', params: [] } : { sql: 'b.id = $1', params: [user.branch_id] }
 
+  // Money figures (revenue, takings, by branch) are admin-only: staff get no queries and no fields for them.
+  const ifAdmin = (sql, params) => (user.role === 'admin' ? query(sql, params) : { rows: [] })
+
   const [byStatus, orderDays, repairDays, orderBranches, repairBranches, lowStock] = await Promise.all([
     query(`SELECT status, count(*) AS count FROM repairs r WHERE ${r.sql} AND status <> ALL($${r.params.length + 1}::text[])
            GROUP BY status ORDER BY count DESC`, [...r.params, REPAIR_CLOSED]),
-    query(`SELECT to_char(d, 'YYYY-MM-DD') AS day, COALESCE(sum(o.total), 0) AS revenue, count(o.id) AS orders
+    ifAdmin(`SELECT to_char(d, 'YYYY-MM-DD') AS day, COALESCE(sum(o.total), 0) AS revenue, count(o.id) AS orders
            FROM ${DAYS} d
            LEFT JOIN orders o ON (o.paid_at AT TIME ZONE 'Europe/London')::date = d::date AND ${revenueWhere('o')} AND ${o.sql}
            GROUP BY d ORDER BY d`, o.params),
-    query(`SELECT to_char(d, 'YYYY-MM-DD') AS day, COALESCE(sum(r.paid_amount), 0) AS takings, count(r.id) AS repairs
+    ifAdmin(`SELECT to_char(d, 'YYYY-MM-DD') AS day, COALESCE(sum(r.paid_amount), 0) AS takings, count(r.id) AS repairs
            FROM ${DAYS} d
            LEFT JOIN repairs r ON (r.paid_at AT TIME ZONE 'Europe/London')::date = d::date AND ${repairTakingsWhere('r')} AND ${r.sql}
            GROUP BY d ORDER BY d`, r.params),
-    query(`SELECT b.area AS branch, COALESCE(sum(o.total), 0) AS revenue
+    ifAdmin(`SELECT b.id, b.area AS branch, COALESCE(sum(o.total), 0) AS revenue
            FROM branches b
            LEFT JOIN orders o ON o.branch_id = b.id AND o.paid_at >= now() - interval '30 days' AND ${revenueWhere('o')}
-           WHERE ${branchOnly} GROUP BY b.area`, branchParams),
-    query(`SELECT b.area AS branch, COALESCE(sum(r.paid_amount), 0) AS takings
+           WHERE ${branchOnly} GROUP BY b.id, b.area`, branchParams),
+    ifAdmin(`SELECT b.area AS branch, COALESCE(sum(r.paid_amount), 0) AS takings
            FROM branches b
            LEFT JOIN repairs r ON r.branch_id = b.id AND r.paid_at >= now() - interval '30 days' AND ${repairTakingsWhere('r')}
            WHERE ${branchOnly} GROUP BY b.area`, branchParams),
@@ -81,10 +84,12 @@ router.get('/stats', protect, wrap(async (req, res) => {
   stats.repairsByStatus = byStatus.rows
   stats.unpaidOrders = await countWhere(user, 'orders', "payment_status = 'unpaid' AND status <> 'cancelled'")
   stats.repairsAwaitingPayment = await countWhere(user, 'repairs', "payment_status = 'unpaid' AND status = ANY($1)", [[S.READY, S.DISPATCHED]])
-  stats.revenueByDay = orderDays.rows.map((d) => ({ ...d, repairTakings: takingsByDay.get(d.day).takings, repairsPaid: takingsByDay.get(d.day).repairs }))
-  stats.revenueByBranch = orderBranches.rows
-    .map((b) => ({ ...b, repairTakings: takingsByBranch.get(b.branch) ?? 0 }))
-    .sort((a, b) => (b.revenue + b.repairTakings) - (a.revenue + a.repairTakings) || a.branch.localeCompare(b.branch))
+  if (user.role === 'admin') {
+    stats.revenueByDay = orderDays.rows.map((d) => ({ ...d, repairTakings: takingsByDay.get(d.day).takings, repairsPaid: takingsByDay.get(d.day).repairs }))
+    stats.revenueByBranch = orderBranches.rows
+      .map((b) => ({ ...b, repairTakings: takingsByBranch.get(b.branch) ?? 0 }))
+      .sort((a, b) => (b.revenue + b.repairTakings) - (a.revenue + a.repairTakings) || a.branch.localeCompare(b.branch))
+  }
   stats.lowStock = lowStock.rows[0].n
   res.json(stats)
 }))

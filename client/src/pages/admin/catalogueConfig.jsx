@@ -13,6 +13,7 @@ export const products = {
     { key: 'category', label: 'Category' },
     { key: 'condition', label: 'Condition' },
     { key: 'price', label: 'Price', render: (r) => gbp(r.price) },
+    { key: 'costPrice', label: 'Bought for', render: (r) => (r.costPrice == null ? <span className="badge bg-danger">Missing</span> : gbp(r.costPrice)) },
     { key: 'stockTotal', label: 'Stock (all branches)' },
     active,
   ],
@@ -22,6 +23,7 @@ export const products = {
     { name: 'categoryId', label: 'Category', type: 'select', optionsFrom: '/categories', required: true },
     { name: 'price', label: 'Price (£)', type: 'number', required: true },
     { name: 'wasPrice', label: 'Was price (£, optional)', type: 'number' },
+    { name: 'costPrice', label: 'Bought for (£, per item)', type: 'number', required: true, hint: 'Needed so profit is counted. A recorded delivery takes over once there is one for this product.' },
     { name: 'condition', label: 'Condition', type: 'choice', choices: ['New', 'Used', 'Refurbished'] },
     { name: 'image', label: 'Image path or URL' },
     { name: 'description', label: 'Description', type: 'textarea' },
@@ -59,6 +61,7 @@ export const branches = {
     { key: 'address', label: 'Address' },
     { key: 'postcode', label: 'Postcode' },
     { key: 'phone', label: 'Phone' },
+    { key: 'staff', label: 'Staff working here', render: (r) => (r.staff?.length ? r.staff.join(', ') : '-') },
     active,
   ],
   fields: [
@@ -67,8 +70,6 @@ export const branches = {
     { name: 'address', label: 'Address' },
     { name: 'postcode', label: 'Postcode' },
     { name: 'phone', label: 'Phone' },
-    { name: 'lat', label: 'Latitude', type: 'number' },
-    { name: 'lng', label: 'Longitude', type: 'number' },
     activeField,
   ],
 }

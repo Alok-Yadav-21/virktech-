@@ -44,7 +44,7 @@ export default function FormModal({ title, fields, initial, onSubmit, onHide }) 
   }
 
   return (
-    <Modal show onHide={onHide} fullscreen="sm-down" scrollable centered>
+    <Modal show onHide={onHide} fullscreen="md-down" size="xl" scrollable centered>
       {/* The form sits between modal-content and modal-body, so it must be the flex column that lets the body scroll. */}
       <form onSubmit={submit} className="d-flex flex-column overflow-hidden" style={{ minHeight: 0, flex: '1 1 auto' }}>
         <Modal.Header closeButton><Modal.Title>{title}</Modal.Title></Modal.Header>

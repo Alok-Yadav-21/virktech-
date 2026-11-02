@@ -19,8 +19,11 @@ import dashboardRoutes from './routes/dashboard.js'
 import stockRoutes from './routes/stock.js'
 import deliveryRoutes from './routes/deliveries.js'
 import marginRoutes from './routes/margins.js'
+import reportRoutes from './routes/reports.js'
 import vapeRoutes from './routes/vapes/index.js'
 import userRoutes from './routes/users.js'
+import shiftRoutes from './routes/shifts.js'
+import tillRoutes from './routes/till.js'
 import { products, categories, services, branches } from './routes/catalogue.js'
 
 const app = express()
@@ -66,6 +69,7 @@ app.use('/api/branches', branches)
 app.use('/api/stock', stockRoutes)
 app.use('/api/deliveries', deliveryRoutes)
 app.use('/api/margins', marginRoutes)
+app.use('/api/reports', reportRoutes)
 app.use('/api/vapes', vapeRoutes)
 app.use('/api/repairs', repairRoutes)
 app.use('/api/orders', orderRoutes)
@@ -73,6 +77,8 @@ app.use('/api/tradeins', tradeinRoutes)
 app.use('/api/loyalty', loyaltyRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/shifts', shiftRoutes)
+app.use('/api/till', tillRoutes)
 app.use('/api', notFound)
 
 // One deploy: when client/dist exists (npm run build in client/) this server also serves the website.

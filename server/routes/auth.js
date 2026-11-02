@@ -5,7 +5,7 @@ import { body, validationResult } from 'express-validator'
 import { query } from '../db.js'
 import { createUser, hashPassword, toPublic, DUMMY_HASH } from '../utils/users.js'
 import { protect } from '../middleware/auth.js'
-import { loginLimiter, registerLimiter } from '../middleware/limits.js'
+import { loginLimiter, pinLimiter, registerLimiter } from '../middleware/limits.js'
 import { config } from '../config.js'
 import { fail, str, wrap } from '../utils/validate.js'
 
@@ -56,11 +56,21 @@ router.post('/login',
     const { rows } = await query('SELECT * FROM users WHERE email = $1', [req.body.email])
     const user = rows[0]
     // Always run one bcrypt compare so response time does not reveal whether the email exists.
-    const match = await bcrypt.compare(req.body.password, user ? user.password : DUMMY_HASH)
+    const match = await bcrypt.compare(req.body.password, user?.password || DUMMY_HASH)
     if (!user || !user.active || !match) throw fail(401, 'Invalid email or password')
     setCookie(res, user)
     res.json(toPublic(user))
   }))
+
+// Staff only: the PIN alone identifies them. Customers and admins can never match, whatever PIN they hold.
+router.post('/pin-login', pinLimiter, wrap(async (req, res) => {
+  const pin = String(req.body.pin ?? '')
+  const { rows } = await query("SELECT * FROM users WHERE pin = $1 AND role = 'staff'", [pin])
+  const user = rows[0]
+  if (!user || !user.active) throw fail(401, 'Wrong PIN')
+  setCookie(res, user)
+  res.json(toPublic(user))
+}))
 
 router.post('/logout', (req, res) => {
   res.clearCookie('token', COOKIE)
@@ -81,7 +91,7 @@ router.patch('/me', protect, wrap(async (req, res) => {
   let changedPassword = false
   if (newPassword) {
     if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 200) throw fail(400, 'Password must be at least 8 characters')
-    if (!(await bcrypt.compare(String(currentPassword || ''), req.user.password))) throw fail(400, 'Current password is wrong')
+    if (!req.user.password || !(await bcrypt.compare(String(currentPassword || ''), req.user.password))) throw fail(400, 'Current password is wrong')
     set('password', await hashPassword(newPassword))
     sets.push('password_changed_at = now()')
     changedPassword = true

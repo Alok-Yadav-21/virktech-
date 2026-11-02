@@ -3,9 +3,10 @@ import { query } from '../db.js'
 import { fail } from '../utils/validate.js'
 
 // Always re-read the user: role/active changes apply immediately, never trust token claims.
-export async function protect(req, res, next) {
+// The till has its own cookie, so a till sign-in never works on dashboard routes and a dashboard sign-in never works on the till.
+const guard = (cookie) => async (req, res, next) => {
   try {
-    const token = req.cookies?.token
+    const token = req.cookies?.[cookie]
     if (!token) throw fail(401, 'Please log in')
     let claims
     try { claims = jwt.verify(token, process.env.JWT_SECRET) } catch { throw fail(401, 'Session expired, please log in') }
@@ -18,6 +19,8 @@ export async function protect(req, res, next) {
     next()
   } catch (e) { next(e) }
 }
+export const protect = guard('token')
+export const protectTill = guard('till_token')
 
 export const requireRole = (...roles) => (req, res, next) =>
   roles.includes(req.user?.role) ? next() : next(fail(403, 'Not allowed'))

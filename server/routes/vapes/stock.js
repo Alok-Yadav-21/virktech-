@@ -3,9 +3,15 @@ import { query } from '../../db.js'
 import { protect, requireRole } from '../../middleware/auth.js'
 import { fail, wrap } from '../../utils/validate.js'
 import { branchFor } from '../../utils/scope.js'
+import { lowestBranchId } from '../../utils/lowestBranch.js'
 
 const router = Router()
 router.use(protect, requireRole('staff', 'admin'))
+
+// Admin: the branch to show first on the Vape stock page.
+router.get('/lowest-branch', requireRole('admin'), wrap(async (req, res) => {
+  res.json({ branchId: await lowestBranchId('vape_products', 'vape_stock') })
+}))
 
 // Every active vape product with this branch's count (0 when no count has been entered yet).
 router.get('/', wrap(async (req, res) => {
@@ -14,7 +20,7 @@ router.get('/', wrap(async (req, res) => {
     `SELECT p.id AS "productId", p.name, b.name AS brand, p.flavour, p.kind, p.nicotine_mg AS "nicotineMg", COALESCE(s.stock, 0)::int AS stock
      FROM vape_products p JOIN vape_brands b ON b.id = p.brand_id
      LEFT JOIN vape_stock s ON s.product_id = p.id AND s.branch_id = $1
-     WHERE p.active = true ORDER BY b.name, p.name, p.flavour`, [branchId])
+     WHERE p.active = true ORDER BY stock, b.name, p.name, p.flavour`, [branchId])
   res.json(rows)
 }))
 

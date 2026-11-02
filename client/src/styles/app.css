@@ -236,3 +236,12 @@ details[open] > .vt-sum::after { transform: rotate(-135deg); }
 @media (min-width: 992px) { .vt-scroll-lg { max-height: calc(100vh - 11rem); overflow-y: auto; padding: 2px; margin: -2px; } }
 /* Fingers need 44px even on the smaller buttons */
 @media (pointer: coarse) { .btn-sm { min-height: 44px; } }
+
+/* Printing shows only the till receipt (narrow like a till roll) or the admin report (that is how it becomes a PDF) */
+@media print {
+  body * { visibility: hidden; }
+  .till-receipt, .till-receipt *, .print-report, .print-report * { visibility: visible; }
+  .till-receipt { position: absolute; left: 0; top: 0; width: 80mm; }
+  .print-report { position: absolute; left: 0; top: 0; width: 100%; }
+  .print-report .no-print { display: none !important; }
+}

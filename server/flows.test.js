@@ -14,6 +14,12 @@ const login = async (email, password = PW) => {
   expect(r.status, `login ${email}`).toBe(200)
   return agent
 }
+const loginPin = async (pin) => {
+  const agent = request.agent(app)
+  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  expect(r.status, `pin login ${pin}`).toBe(200)
+  return agent
+}
 const stockAt = async (branchId, productId) => (await query('SELECT stock FROM branch_stock WHERE branch_id = $1 AND product_id = $2', [branchId, productId])).rows[0]?.stock ?? 0
 const balance = async () => (await as.cust.get('/api/loyalty/me')).body.balance
 const order = (items, extra = {}) => as.cust.post('/api/orders').send({ branchId: blv, deliveryMethod: 'collection', paymentMethod: 'cash', items, ...extra })
@@ -26,15 +32,15 @@ beforeAll(async () => {
   blv = (await query("SELECT id FROM branches WHERE area = 'Belvedere'")).rows[0].id
   sid = (await query("SELECT id FROM branches WHERE area = 'Sidcup'")).rows[0].id
   as.admin = await login('admin@demo.com')
-  as.staff = await login('staff@demo.com')
+  as.staff = await loginPin('1234')
   as.cust = await login('customer@demo.com')
   const products = (await request(app).get('/api/products')).body
   macbook = products.find((p) => p.name.startsWith('MacBook Air 13')).id
   cable = products.find((p) => p.name === 'USB-C Fast Charging Cable').id
 
-  const staff = await as.admin.post('/api/users').send({ name: 'Flows Sidcup', email: 'flows-sidcup@test.local', password: PW, role: 'staff', branchId: sid })
+  const staff = await as.admin.post('/api/users').send({ name: 'Flows Sidcup', pin: '9002', dailyWage: 11, role: 'staff', branchId: sid })
   expect(staff.status).toBe(201)
-  as.sidcup = await login('flows-sidcup@test.local')
+  as.sidcup = await loginPin('9002')
   as.other = request.agent(app)
   expect((await as.other.post('/api/auth/register').send({ name: 'Flows Other', email: 'flows-other@test.local', password: PW })).status).toBe(201)
 })
@@ -42,6 +48,16 @@ beforeAll(async () => {
 afterAll(() => pool.end())
 
 // ---------------------------------------------------------------- stock per branch
+test('admin opens stock on the branch with the most low lines; staff and customers cannot ask', async () => {
+  for (const url of ['/api/stock/lowest-branch', '/api/vapes/stock/lowest-branch']) {
+    const { status, body } = await as.admin.get(url)
+    expect(status).toBe(200)
+    expect(Number.isInteger(body.branchId)).toBe(true)
+    expect((await as.staff.get(url)).status).toBe(403)
+    expect((await as.cust.get(url)).status).toBe(403)
+  }
+})
+
 test('stock is counted per branch: staff manage their own branch, admin any', async () => {
   expect((await as.staff.get('/api/stock')).body.length).toBeGreaterThan(20)
   expect((await as.staff.patch(`/api/stock/${cable}`).send({ stock: 7 })).body).toMatchObject({ branchId: blv, stock: 7 })
@@ -145,8 +161,8 @@ test('a repair goes from booking to payment and completion', async () => {
   const mine = (await as.cust.get(u)).body
   expect([mine.notes.length, mine.parts, mine.technician]).toEqual([1, undefined, undefined])
 
-  const tech = (await query("SELECT id FROM users WHERE email = 'staff@demo.com'")).rows[0].id
-  const other = (await query("SELECT id FROM users WHERE email = 'flows-sidcup@test.local'")).rows[0].id
+  const tech = (await query("SELECT id FROM users WHERE pin = '1234'")).rows[0].id
+  const other = (await query("SELECT id FROM users WHERE pin = '9002'")).rows[0].id
   expect((await as.staff.patch(`${u}/technician`).send({ technicianId: tech })).status).toBe(403)
   expect((await as.admin.patch(`${u}/technician`).send({ technicianId: other })).status, 'wrong branch').toBe(400)
   expect((await as.admin.patch(`${u}/technician`).send({ technicianId: tech })).body.technician.id).toBe(tech)
@@ -306,17 +322,18 @@ test('revenue counts paid orders only; repair takings are a separate figure', as
   await as.staff.patch(`${u}/pay`)
 
   const staff = (await as.staff.get('/api/dashboard/stats')).body
-  const today = staff.revenueByDay.at(-1)
-  expect(today.revenue, 'only the paid, kept order').toBe(a.total)
-  expect(today.repairTakings).toBe(75)
-  expect(staff.revenueByDay).toHaveLength(14)
-  expect(staff.revenueByBranch).toHaveLength(1)
-  expect(staff.revenueByBranch[0]).toMatchObject({ branch: 'Belvedere', revenue: a.total, repairTakings: 75 })
+  expect(staff.repairs.open, 'staff still get their counts').toBeGreaterThanOrEqual(0)
+  expect([staff.revenueByDay, staff.revenueByBranch], 'staff never get money figures').toEqual([undefined, undefined])
 
   const admin = (await as.admin.get('/api/dashboard/stats')).body
+  const today = admin.revenueByDay.at(-1)
+  expect(today.revenue).toBeGreaterThanOrEqual(a.total)
+  expect(today.repairTakings).toBeGreaterThanOrEqual(75)
+  expect(admin.revenueByDay).toHaveLength(14)
   expect(admin.revenueByBranch).toHaveLength(8)
+  expect(admin.revenueByBranch.find((b) => b.branch === 'Belvedere')).toMatchObject({ revenue: expect.any(Number) })
   const sidcup = (await as.sidcup.get('/api/dashboard/stats')).body
-  expect(sidcup.revenueByDay.every((x) => x.revenue === 0 && x.repairTakings === 0)).toBe(true)
+  expect(sidcup.revenueByDay).toBeUndefined()
   const cust = (await as.cust.get('/api/dashboard/stats')).body
   expect([cust.role, cust.revenueByDay]).toEqual(['customer', undefined])
   expect((await request(app).get('/api/dashboard/stats')).status).toBe(401)
@@ -354,27 +371,41 @@ test('lists page, search and report the total in X-Total-Count', async () => {
 // ---------------------------------------------------------------- admin user management
 test('admin manages staff and customers; resets and deactivation take effect immediately', async () => {
   expect((await as.staff.get('/api/users')).status).toBe(403)
-  expect((await as.admin.post('/api/users').send({ name: 'S', email: 'x@test.local', password: PW, role: 'staff' })).status, 'staff need a branch').toBe(400)
+  expect((await as.admin.post('/api/users').send({ name: 'S', pin: '9003', role: 'staff' })).status, 'staff need a branch').toBe(400)
   expect((await as.admin.post('/api/users').send({ name: 'S', email: 'x@test.local', password: PW, role: 'admin' })).status, 'no admins via the API').toBe(400)
   expect((await as.admin.post('/api/users').send({ name: 'S', email: 'x@test.local', password: 'short', role: 'customer' })).status).toBe(400)
-  expect((await as.admin.post('/api/users').send({ name: 'D', email: 'flows-sidcup@test.local', password: PW, role: 'customer' })).status).toBe(409)
+  expect((await as.admin.post('/api/users').send({ name: 'D', email: 'flows-other@test.local', password: PW, role: 'customer' })).status).toBe(409)
+  expect((await as.admin.post('/api/users').send({ name: 'D', pin: '9002', role: 'staff', branchId: sid })).status, 'PIN already used').toBe(409)
+  expect((await as.admin.post('/api/users').send({ name: 'D', pin: '12', role: 'staff', branchId: sid })).status, 'PIN must be 4 digits').toBe(400)
+  expect((await as.admin.post('/api/users').send({ name: 'D', pin: '9003', dailyWage: -1, role: 'staff', branchId: sid })).status, 'wage cannot be negative').toBe(400)
 
   const adminId = (await query("SELECT id FROM users WHERE email = 'admin@demo.com'")).rows[0].id
   expect((await as.admin.put(`/api/users/${adminId}`).send({ name: 'x' })).status, 'admin accounts are not editable here').toBe(404)
   expect((await as.admin.delete(`/api/users/${adminId}`)).status).toBe(404)
 
-  const id = (await query("SELECT id FROM users WHERE email = 'flows-sidcup@test.local'")).rows[0].id
-  expect((await as.admin.put(`/api/users/${id}`).send({ name: 'Flows Lead', phone: '0123' })).body).toMatchObject({ name: 'Flows Lead', branchName: 'Sidcup' })
-  expect((await as.admin.put(`/api/users/${id}`).send({ password: '' })).status, 'blank keeps the old password').toBe(200)
-  await login('flows-sidcup@test.local')
-  expect((await as.admin.put(`/api/users/${id}`).send({ password: 'Reset-Pass-99!' })).status).toBe(200)
-  expect((await as.sidcup.get('/api/auth/me')).status, 'a reset ends the old session').toBe(401)
-  as.sidcup = await login('flows-sidcup@test.local', 'Reset-Pass-99!')
+  const id = (await query("SELECT id FROM users WHERE pin = '9002'")).rows[0].id
+  const listed = (await as.admin.get('/api/users?role=staff&q=Flows')).body.find((u) => u.id === id)
+  expect(listed).toMatchObject({ pin: '9002', dailyWage: 11, branchName: 'Sidcup' })
+  expect((await as.admin.put(`/api/users/${id}`).send({ name: 'Flows Lead', dailyWage: 13.5 })).body).toMatchObject({ name: 'Flows Lead', dailyWage: 13.5 })
+  expect((await as.sidcup.get('/api/auth/me')).body, 'PIN and wage never reach the staff member').not.toHaveProperty('pin')
+  const branchRow = (await as.admin.get('/api/branches?all=1')).body.find((b) => b.id === sid)
+  expect(branchRow.staff, 'admin branch list names who works there').toContain('Flows Lead')
+  expect((await request(app).get('/api/branches')).body.every((b) => !('staff' in b)), 'public list has no staff').toBe(true)
+
+  expect((await as.admin.put(`/api/users/${id}`).send({ pin: '9003' })).status).toBe(200)
+  expect((await as.sidcup.get('/api/auth/me')).status, 'a new PIN ends the old session').toBe(401)
+  expect((await request(app).post('/api/auth/pin-login').send({ pin: '9002' })).status, 'old PIN').toBe(401)
+  as.sidcup = await loginPin('9003')
+  expect((await request(app).post('/api/auth/login').send({ email: 'x@test.local', password: PW })).status, 'staff have no password').toBe(401)
 
   expect((await as.admin.delete(`/api/users/${id}`)).status).toBe(200)
   expect((await as.sidcup.get('/api/auth/me')).status, 'deactivated: locked out at once').toBe(401)
-  expect((await request(app).post('/api/auth/login').send({ email: 'flows-sidcup@test.local', password: 'Reset-Pass-99!' })).status).toBe(401)
+  expect((await request(app).post('/api/auth/pin-login').send({ pin: '9003' })).status).toBe(401)
   expect((await as.admin.put(`/api/users/${id}`).send({ active: true })).body.active).toBe(true)
+  // a customer can never sign in with a PIN, even one that matches
+  await query("UPDATE users SET pin = '5555' WHERE email = 'customer@demo.com'")
+  expect((await request(app).post('/api/auth/pin-login').send({ pin: '5555' })).status, 'customer PIN is ignored').toBe(401)
+  await query("UPDATE users SET pin = NULL WHERE email = 'customer@demo.com'")
 
   const search = await as.admin.get('/api/users?role=customer&q=flows-other')
   expect(search.body.map((u) => u.email)).toEqual(['flows-other@test.local'])

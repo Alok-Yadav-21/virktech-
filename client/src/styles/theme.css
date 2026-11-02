@@ -194,8 +194,8 @@ textarea.form-control { min-height: 0; }
 .breadcrumb { --bs-breadcrumb-divider-color: var(--vt-muted); --bs-breadcrumb-item-active-color: var(--vt-muted); }
 
 /* ---- Overlays ---- */
-.modal { --bs-modal-border-radius: 1.25rem; --bs-modal-border-color: transparent; --bs-modal-header-border-color: var(--vt-line); --bs-modal-footer-border-color: var(--vt-line); --bs-modal-inner-border-radius: 1.25rem; }
-.modal-header .modal-title { font-weight: 600; }
+.modal { --bs-modal-padding: 1.75rem; --bs-modal-border-radius: 1.25rem; --bs-modal-border-color: transparent; --bs-modal-header-border-color: var(--vt-line); --bs-modal-footer-border-color: var(--vt-line); --bs-modal-inner-border-radius: 1.25rem; }
+.modal-header .modal-title { font-weight: 600; font-size: 1.4rem; }
 .offcanvas { --bs-offcanvas-border-color: transparent; --bs-offcanvas-box-shadow: var(--vt-shadow-md); }
 .offcanvas.offcanvas-bottom { --bs-offcanvas-height: auto; max-height: 88vh; border-radius: 1.5rem 1.5rem 0 0; }
 .offcanvas-backdrop.show { opacity: 0.45; }

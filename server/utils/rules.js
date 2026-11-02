@@ -227,3 +227,20 @@ export function stockDeltas(oldItems, newItems) {
   for (const i of newItems) delta.set(i.productId, (delta.get(i.productId) || 0) + i.qty)
   return [...delta].filter(([, d]) => d !== 0).sort((a, b) => a[0] - b[0]) // fixed order avoids deadlocks
 }
+
+// ---- Shifts ----------------------------------------------------------------------------
+// Whole minutes worked (rounded down). An open shift is measured up to `endedAt` = now.
+export const shiftMinutes = (startedAt, endedAt = new Date()) =>
+  Math.max(0, Math.floor((new Date(endedAt) - new Date(startedAt)) / 60000))
+
+// Staff are paid per day worked. A day is a UK calendar day with at least one shift started in it, and it pays the
+// rate stored on that day's first shift, once however many shifts or hours. Returns the ids of the shifts that earn the day.
+// Each shift needs { id, userId, day: 'YYYY-MM-DD', startedAt }.
+export function dayEarners(shifts) {
+  const first = new Map()
+  for (const s of shifts) {
+    const key = `${s.userId}|${s.day}`
+    if (!first.has(key) || new Date(s.startedAt) < new Date(first.get(key).startedAt)) first.set(key, s)
+  }
+  return new Set([...first.values()].map((s) => s.id))
+}

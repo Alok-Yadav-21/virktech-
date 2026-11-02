@@ -20,8 +20,9 @@ export function AuthProvider({ children }) {
   // Re-read the account so a points balance shown at checkout is current.
   const refresh = () => api.get('/auth/me').then((r) => setUser(r.data)).catch(() => { /* api.js already toasted */ })
   const login = (email, password) => api.post('/auth/login', { email, password }).then((r) => (setUser(r.data), r.data))
+  const pinLogin = (pin) => api.post('/auth/pin-login', { pin }).then((r) => (setUser(r.data), r.data))
   const register = (form) => api.post('/auth/register', form).then((r) => (setUser(r.data), r.data))
   const logout = () => api.post('/auth/logout').then(() => setUser(null))
 
-  return <AuthContext.Provider value={{ user, loading, login, register, logout, refresh }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, loading, login, pinLogin, register, logout, refresh }}>{children}</AuthContext.Provider>
 }

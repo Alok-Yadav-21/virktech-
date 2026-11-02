@@ -34,7 +34,7 @@ router.get('/dashboard', protect, requireRole('staff', 'admin'), wrap(async (req
            LEFT JOIN vape_stock s ON s.product_id = p.id AND s.branch_id = b.id
            WHERE p.active = true AND b.active = true AND ${low.sql} AND COALESCE(s.stock, 0) <= 3`, low.params),
   ])
-  res.json({ openOrders: o.rows[0].open, unpaidOrders: o.rows[0].unpaid, revenueLast30Days: Number(o.rows[0].revenue30), lowStock: l.rows[0].n })
+  res.json({ openOrders: o.rows[0].open, unpaidOrders: o.rows[0].unpaid, ...(req.user.role === 'admin' && { revenueLast30Days: Number(o.rows[0].revenue30) }), lowStock: l.rows[0].n })
 }))
 
 export default router

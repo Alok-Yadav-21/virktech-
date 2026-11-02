@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { REPAIR_STATUS as S, allowedMoves, statusChangeError, quoteSent, customerStage, lineCost, unitProfit, marginPct, stockDeltas } from './rules.js'
+import { REPAIR_STATUS as S, allowedMoves, statusChangeError, quoteSent, customerStage, lineCost, unitProfit, marginPct, stockDeltas, shiftMinutes, dayEarners } from './rules.js'
 
 const repair = (status, extra = {}) => ({ status, quote: null, history: [], paymentStatus: 'unpaid', ...extra })
 
@@ -202,3 +202,17 @@ test('stock deltas are the net change of an edit', () => {
       .toEqual([[1, 2], [2, -5], [3, 4]])
     expect(stockDeltas([{ productId: 1, qty: 3 }], [{ productId: 1, qty: 3 }])).toEqual([])
   })
+
+test('shift minutes', () => {
+  const at = (h, m = 0) => new Date(Date.UTC(2026, 0, 5, h, m))
+  expect(shiftMinutes(at(9), at(10, 30))).toBe(90)
+  expect(shiftMinutes(at(9), at(9, 0))).toBe(0)
+  expect(shiftMinutes(at(10), at(9))).toBe(0)
+  expect(shiftMinutes(new Date(at(9).getTime() - 59_999), at(9))).toBe(0)
+})
+
+test('a day pays once, on its first shift', () => {
+  const shift = (id, userId, day, h) => ({ id, userId, day, startedAt: new Date(Date.UTC(2026, 0, 5, h)) })
+  const earners = dayEarners([shift(1, 7, '2026-01-05', 14), shift(2, 7, '2026-01-05', 9), shift(3, 7, '2026-01-06', 9), shift(4, 8, '2026-01-05', 9)])
+  expect([...earners].sort()).toEqual([2, 3, 4]) // two shifts on the 5th pay once (the 9am one); other days and people pay on their own
+})

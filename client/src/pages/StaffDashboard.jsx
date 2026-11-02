@@ -17,13 +17,14 @@ function Stat({ to, label, value, hint, tone }) {
   )
 }
 
-function Bars({ rows, label, valueKey, secondKey, max }) {
+// `link(row)` turns a row's name into a link (used for the branch names).
+function Bars({ rows, label, valueKey, secondKey, max, link }) {
   return (
     <table className="table table-sm align-middle mb-0">
       <tbody>
         {rows.map((d) => (
           <tr key={label(d)}>
-            <td className="text-nowrap">{label(d)}</td>
+            <td className="text-nowrap">{link ? <Link to={link(d)}>{label(d)}</Link> : label(d)}</td>
             <td style={{ width: '38%' }}>
               <div className="progress mb-1" role="progressbar" aria-label={`Orders, ${label(d)}`}><div className="progress-bar" style={{ width: `${(d[valueKey] / max) * 100}%` }} /></div>
               <div className="progress" role="progressbar" aria-label={`Repairs, ${label(d)}`}><div className="progress-bar bg-warning" style={{ width: `${(d[secondKey] / max) * 100}%` }} /></div>
@@ -45,10 +46,12 @@ export default function StaffDashboard() {
   if (error) return <ErrorState onRetry={reload}>We could not load the dashboard.</ErrorState>
   if (loading && !s) return <div className="row g-3">{Array.from({ length: 5 }, (_, i) => <div key={i} className="col-6 col-md-4 col-xl"><Skeleton h="6rem" /></div>)}</div>
 
-  const total14 = s.revenueByDay.reduce((n, d) => n + d.revenue, 0)
-  const takings14 = s.revenueByDay.reduce((n, d) => n + d.repairTakings, 0)
-  const maxDay = Math.max(1, ...s.revenueByDay.map((d) => Math.max(d.revenue, d.repairTakings)))
-  const maxBranch = Math.max(1, ...s.revenueByBranch.map((b) => Math.max(b.revenue, b.repairTakings)))
+  // Money figures exist for admin only: the server does not send them to staff.
+  const admin = user.role === ROLES.ADMIN
+  const total14 = admin ? s.revenueByDay.reduce((n, d) => n + d.revenue, 0) : 0
+  const takings14 = admin ? s.revenueByDay.reduce((n, d) => n + d.repairTakings, 0) : 0
+  const maxDay = admin ? Math.max(1, ...s.revenueByDay.map((d) => Math.max(d.revenue, d.repairTakings))) : 1
+  const maxBranch = admin ? Math.max(1, ...s.revenueByBranch.map((b) => Math.max(b.revenue, b.repairTakings))) : 1
   const stockLink = user.role === ROLES.ADMIN ? '/admin/stock' : '/staff/stock'
 
   return (
@@ -63,21 +66,22 @@ export default function StaffDashboard() {
       </div>
 
       <div className="row g-3">
-        <div className="col-xl-7">
+        {admin && <div className="col-xl-7">
           <div className="vt-card p-3 h-100">
-            <h2 className="h6 mb-1">Last 14 days</h2>
+            <h2 className="h6 mb-1">Last 14 days <Link to="/admin/reports" className="small fw-normal ms-2">Revenue and profit report</Link></h2>
             <p className="mb-1">Order revenue <strong>{gbp(total14)}</strong> · Repair takings <strong>{gbp(takings14)}</strong></p>
             <p className="small text-secondary">Order revenue is paid orders only (cancelled and refunded are not counted). Repair takings are paid repairs, shown separately. Green bar: orders. Amber bar: repairs.</p>
             <div className="table-responsive">
               <Bars rows={[...s.revenueByDay].reverse()} label={(d) => new Date(d.day).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })} valueKey="revenue" secondKey="repairTakings" max={maxDay} />
             </div>
           </div>
-        </div>
-        <div className="col-xl-5">
-          <div className="vt-card p-3 mb-3">
+        </div>}
+        <div className={admin ? 'col-xl-5' : 'col-12'}>
+          {admin && <div className="vt-card p-3 mb-3">
             <h2 className="h6">By branch, last 30 days <small className="text-secondary fw-normal">(orders / repairs)</small></h2>
-            <div className="table-responsive"><Bars rows={s.revenueByBranch} label={(b) => b.branch} valueKey="revenue" secondKey="repairTakings" max={maxBranch} /></div>
-          </div>
+            <p className="small text-secondary mb-1">Click a branch for its revenue and profit report.</p>
+            <div className="table-responsive"><Bars rows={s.revenueByBranch} label={(b) => b.branch} valueKey="revenue" secondKey="repairTakings" max={maxBranch} link={(b) => `/admin/reports/${b.id}`} /></div>
+          </div>}
           <div className="vt-card p-3">
             <h2 className="h6">Open repairs by status</h2>
             {!s.repairsByStatus.length ? <p className="text-secondary mb-0">No open repairs.</p> : (

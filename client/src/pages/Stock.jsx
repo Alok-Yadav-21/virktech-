@@ -9,7 +9,9 @@ export default function Stock() {
   const { user } = useAuth()
   const admin = user.role === 'admin'
   const { data: branches } = useFetch(admin ? '/branches' : null) // staff work on their own branch
-  const [branchId, setBranchId] = useState('')
+  const lowest = useFetch(admin ? '/stock/lowest-branch' : null) // admin opens on the branch that needs stock most
+  const [picked, setPicked] = useState('')
+  const branchId = picked || String(lowest.data?.branchId ?? '')
   const url = admin ? (branchId ? `/stock?branchId=${branchId}` : null) : '/stock'
 
   return (
@@ -17,13 +19,12 @@ export default function Stock() {
       <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
         <h3 className="mb-0">Stock</h3>
         {admin && (
-          <select className="form-select w-auto" value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-            <option value="">Choose a branch…</option>
-            {branches?.map((b) => <option key={b.id} value={b.id}>{b.area}</option>)}
+          <select className="form-select w-auto" value={branchId} onChange={(e) => setPicked(e.target.value)}>
+            {branches?.map((b) => <option key={b.id} value={b.id}>{b.area}{b.id === lowest.data?.branchId ? ' (lowest stock)' : ''}</option>)}
           </select>
         )}
       </div>
-      {url ? <StockTable key={url} url={url} branchId={admin ? Number(branchId) : undefined} /> : <p className="text-muted">Choose a branch to see its stock.</p>}
+      {url ? <StockTable key={url} url={url} branchId={admin ? Number(branchId) : undefined} /> : <div className="spinner-border" />}
     </>
   )
 }

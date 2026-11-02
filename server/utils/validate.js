@@ -13,3 +13,10 @@ export function str(value, { max, label, required = false }) {
 }
 
 export const isEmail = (v) => typeof v === 'string' && v.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+
+// Optional "YYYY-MM-DD" query value: null when blank, 400 when it is not a real date.
+export const asDay = (v, label) => {
+  if (v == null || v === '') return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || Number.isNaN(Date.parse(v))) throw fail(400, `${label} must be a date like 2026-01-31`)
+  return v
+}

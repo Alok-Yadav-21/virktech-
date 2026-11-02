@@ -48,7 +48,7 @@ export default function Deliveries() {
         <h1 className="h3 mb-0">Deliveries</h1>
         <button className="btn btn-primary" onClick={() => open({})}>Record delivery</button>
       </div>
-      <p className="text-secondary">What the shop bought from wholesalers. Each delivery adds to stock and sets the buying price used in the profit report.</p>
+      <p className="text-secondary">What the shop bought from wholesalers. Each delivery adds to stock{user.role === 'admin' && ' and sets the buying price used in the profit report'}.</p>
       <ListFilters q={q} onQ={setQ} shown={data?.length ?? 0} total={total} placeholder="Search by supplier or reference" />
       {error && <ErrorState onRetry={reload}>We could not load deliveries.</ErrorState>}
       {loading && !data && <div className="d-grid gap-2"><Skeleton h="5rem" /><Skeleton h="5rem" /></div>}

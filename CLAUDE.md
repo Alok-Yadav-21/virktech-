@@ -87,6 +87,24 @@ Never hard-code a status string inside a page. Import it.
 
 Wholesale **deliveries** (`routes/deliveries.js`) record supplier, branch, date and lines of `qty` x `unit_cost`; saving one adds the quantities to `branch_stock`, editing applies only the difference, deleting takes them back (refused with 409 if already sold). **Profit** (`routes/margins.js`) = selling price minus the quantity-weighted average buying price per product; realised profit counts only orders that pass `revenueWhere`, and only products that have a recorded cost. Cost maths lives in `rules.js`. Still no supplier table, purchase orders, transfers or stock ledger.
 
+## Staff PIN login and wages (added on request)
+
+Staff have **no email or password**: admin gives each a unique 4-digit PIN (`users.pin`, migration 004) and they sign in at `/staff-login` (`POST /api/auth/pin-login`, staff accounts only, tight rate limit). Admin also records a **daily wage** per staff member (migration 008). The admin branch list shows who works at each branch. Customers and admins still use email + password.
+
+**Bought-for price** (`cost_price`, migration 007) is required on every new product and cannot be blanked, so no product is left uncosted. Admin can also type it straight into the Profit page (`CostEdit.jsx`); a recorded delivery average still takes priority. The Profit list includes hidden products that have sold, and `?missing=1` lists products with no price.
+
+## Reports (added on request)
+
+Admin-only **Reports** page (`routes/reports.js`, `pages/Reports.jsx`, `/admin/reports/:branchId?`): revenue, cost and profit for all branches combined or one branch, to date or between two dates. Electronics, vapes and repairs are three separate blocks (rule 7); "Everything together" is an extra labelled line and never replaces them. Cost comes from the same `COST` queries as the Profit pages (exported, not copied); sales with no bought-for price are shown apart, not guessed. The PDF is the browser's print-to-PDF (`.print-report` print CSS), so there is no PDF library.
+
+## Shifts and hours (added on request)
+
+Staff press **Start shift** / **End shift** only at the till (`routes/till.js`; the dashboard just shows the shift and has no start/end routes). Several people can be on shift at one till, each starting their own with their PIN. Hours are read in `routes/shifts.js` (migration 005). The server stamps both times; one open shift per person is enforced by a unique index. Staff are paid **per day worked**, not per hour: each shift keeps a copy of the daily wage from when it started, and a UK calendar day pays that rate once, from its first shift, however many shifts or hours (`dayEarners` in `rules.js`). Hours are still recorded and shown (`shiftMinutes`). Staff see only their own hours; admin sees everyone and can fix a forgotten End. Gross pay only: still no breaks, overtime, tax, payslips or rotas.
+
+## Till (added on request)
+
+Staff-only counter till at `/till` (full screen, opened from the staff menu; `routes/till.js`, migration 006). The till has its **own PIN sign-in and cookie** (`till_token`, path `/api/till`, `protectTill`), apart from the dashboard login: whoever sits at it can never reach a dashboard, hours or wages, and "Switch person" signs out of the till only. Staff clock in and out at the till with their own PIN (same branch only, `utils/shifts.js` shared with the dashboard); a sale needs the seller on shift. Admin sees who is working on the home page (`GET /api/shifts/now`). A till sale is an ordinary **paid, collected order** booked to the shared "Walk-in customer" account, so revenue, profit and stock reports need no special case. Electronics and vapes sell in one basket but are saved as two records (`orders`, `vape_orders`), and their totals are never added together. Vape lines need the staff member to confirm an ID check. `sold_by` marks who rang it up; a mistaken sale can be voided the same day (restocks). The cash tab has Exact, nearby round-figure and note/coin buttons (`pages/till/cash.js`, whole pence, screen only; change given is never stored). Cash/card only records how the customer paid; there is still no payment integration, discounts or loyalty on till sales.
+
 ## Vape range (added on request, kept apart from electronics)
 
 Everything vape lives in its own tables (`vape_*`, migration 003), routes (`server/routes/vapes/`, mounted at `/api/vapes`), rules (`utils/vapeRules.js`), pages (`client/src/pages/vapes/`) and basket (`VapeCartContext`). It shares only helpers (scope, paging, validation, money maths in `rules.js`). Its stock, orders, revenue and profit are never added to electronics figures. Collection only, pay at the counter, customer must confirm 18+ at checkout (server refuses without `ageConfirmed: true`), staff check ID on handover. No disposables, no delivery, no loyalty points on vape orders.

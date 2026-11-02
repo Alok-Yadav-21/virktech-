@@ -33,8 +33,8 @@ export async function seedVapesDemo(pool, branches, customerId) {
   const products = []
   for (const [brand, name, kind, flavour, flavourGroup, nicotineMg, sizeMl, price, wasPrice] of PRODUCTS) {
     const { rows: [p] } = await pool.query(
-      `INSERT INTO vape_products (brand_id, name, kind, flavour, flavour_group, nicotine_mg, size_ml, price, was_price)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id, price`,
+      `INSERT INTO vape_products (brand_id, name, kind, flavour, flavour_group, nicotine_mg, size_ml, price, was_price, cost_price)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, round($8::numeric * 0.7, 2)) RETURNING id, price`,
       [brandId[brand], name, kind, flavour, flavourGroup, nicotineMg, sizeMl, price, wasPrice])
     products.push(p)
   }

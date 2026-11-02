@@ -11,6 +11,7 @@ import Branches from './pages/public/Branches'
 import NotFound from './pages/public/NotFound'
 import Login from './pages/auth/Login'
 import Register from './pages/auth/Register'
+import StaffLogin from './pages/auth/StaffLogin'
 import Dashboard from './pages/Dashboard'
 import Profile from './pages/Profile'
 import Contact from './pages/public/Contact'
@@ -33,6 +34,9 @@ import LoyaltyAdjust from './pages/admin/LoyaltyAdjust'
 import Stock from './pages/Stock'
 import Deliveries from './pages/Deliveries'
 import Margins from './pages/Margins'
+import Hours from './pages/Hours'
+import Reports from './pages/Reports'
+import Till from './pages/till/Till'
 import VapeShop from './pages/vapes/VapeShop'
 import VapeProduct from './pages/vapes/VapeProduct'
 import VapeBasket from './pages/vapes/VapeBasket'
@@ -71,7 +75,6 @@ const vapeStaffRoutes = [
   <Route key="vod" path="vapes/orders/:ref" element={<VapeOrderDetail />} />,
   <Route key="vs" path="vapes/stock" element={<VapeStock />} />,
   <Route key="vdel" path="vapes/deliveries" element={<VapeDeliveries />} />,
-  <Route key="vp" path="vapes/profit" element={<VapeMargins />} />,
 ]
 
 const workspace = (path, role, children) => (
@@ -105,21 +108,27 @@ export default function App() {
         <Route path="order-confirmation/:ref" element={<OrderConfirmation />} />
         <Route path="login" element={<Login />} />
         <Route path="register" element={<Register />} />
+        <Route path="staff-login" element={<StaffLogin />} />
         <Route path="*" element={<NotFound />} />
       </Route>
+      {/* The till is full screen (no sidebar) and has its own PIN sign-in, apart from the dashboards; the server enforces it. */}
+      <Route path="/till" element={<Till />} />
       {workspace('/app', ROLES.CUSTOMER, [<Route key="book" path="book" element={<BookRepair />} />, <Route key="sell" path="sell" element={<SellDevice />} />, <Route key="loy" path="loyalty" element={<Loyalty />} />, <Route key="me" path="me" element={<Me />} />, <Route key="vol" path="vape-orders" element={<VapeOrders />} />, <Route key="vod" path="vape-orders/:ref" element={<VapeOrderDetail />} />, ...repairRoutes, ...orderRoutes, ...tradeInRoutes])}
-      {workspace('/staff', ROLES.STAFF, [...repairRoutes, ...orderRoutes, ...tradeInRoutes, ...vapeStaffRoutes, <Route key="stock" path="stock" element={<Stock />} />, <Route key="del" path="deliveries" element={<Deliveries />} />, <Route key="profit" path="profit" element={<Margins />} />, <Route key="loy" path="loyalty" element={<CounterLoyalty />} />])}
+      {workspace('/staff', ROLES.STAFF, [...repairRoutes, ...orderRoutes, ...tradeInRoutes, ...vapeStaffRoutes, <Route key="stock" path="stock" element={<Stock />} />, <Route key="del" path="deliveries" element={<Deliveries />} />, <Route key="hours" path="hours" element={<Hours />} />, <Route key="loy" path="loyalty" element={<CounterLoyalty />} />])}
       {workspace('/admin', ROLES.ADMIN, [
         ...repairRoutes,
         ...orderRoutes,
         ...tradeInRoutes,
         ...vapeStaffRoutes,
+        <Route key="vp" path="vapes/profit" element={<VapeMargins />} />,
         <Route key="vprod" path="vapes/products" element={<CrudPage key="vprod" {...vapeCfg.products} />} />,
         <Route key="vbrand" path="vapes/brands" element={<CrudPage key="vbrand" {...vapeCfg.brands} />} />,
         <Route key="loy" path="loyalty" element={<LoyaltyAdjust />} />,
         <Route key="stock" path="stock" element={<Stock />} />,
         <Route key="del" path="deliveries" element={<Deliveries />} />,
         <Route key="profit" path="profit" element={<Margins />} />,
+        <Route key="rep" path="reports/:branchId?" element={<Reports />} />, // one page, so a chosen date range survives clicking into a branch
+        <Route key="hours" path="hours" element={<Hours />} />,
         ...Object.entries({ ...catalogue, ...userPages }).map(([path, cfg]) => <Route key={path} path={path} element={<CrudPage key={path} {...cfg} />} />),
       ])}
     </Routes>

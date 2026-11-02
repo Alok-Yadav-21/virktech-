@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { query } from '../db.js'
 import { protect, requireRole } from '../middleware/auth.js'
-import { createUser, hashPassword } from '../utils/users.js'
+import { createUser, hashPassword, WALK_IN_EMAIL } from '../utils/users.js'
 import { pageOf, likeOf, sendPage } from '../utils/paging.js'
 import { fail, isEmail, str, wrap } from '../utils/validate.js'
 
@@ -13,7 +13,7 @@ router.use(protect, requireRole('admin'))
 const MANAGED = ['staff', 'customer']
 
 const SELECT = `
-  SELECT u.id, u.name, u.email, u.phone, u.role, u.branch_id AS "branchId", b.area AS "branchName",
+  SELECT u.id, u.name, u.email, u.phone, u.role, u.pin, u.daily_wage AS "dailyWage", u.branch_id AS "branchId", b.area AS "branchName",
          u.loyalty_points AS "loyaltyPoints", u.active, count(*) OVER() AS total_count
   FROM users u LEFT JOIN branches b ON b.id = u.branch_id`
 
@@ -29,6 +29,14 @@ async function checkBranch(id) {
   if (!(await query('SELECT 1 FROM branches WHERE id = $1 AND active = true', [id])).rowCount) throw fail(400, 'Staff need an active branch')
 }
 const clean = ({ total_count, ...u }) => u
+const checkPin = (p) => { if (!/^\d{4}$/.test(String(p ?? ''))) throw fail(400, 'PIN must be exactly 4 digits'); return String(p) }
+const checkWage = (w) => {
+  if (w == null || w === '') return null
+  if (!(Number(w) >= 0 && Number(w) < 1000)) throw fail(400, 'Daily wage must be between 0 and 1000')
+  return Number(w)
+}
+// 23505 = unique violation; the DB check avoids a race between two admins picking the same PIN.
+const dup = (e) => { throw e.code === '23505' ? fail(409, e.constraint?.includes('pin') ? 'That PIN is already used by another staff member' : 'Email already registered') : e }
 
 // ?role=staff|customer&branchId=&q=&limit=&offset=
 router.get('/', wrap(async (req, res) => {
@@ -38,8 +46,9 @@ router.get('/', wrap(async (req, res) => {
     `${SELECT}
      WHERE ($1::text IS NULL OR u.role = $1) AND ($2::int IS NULL OR u.branch_id = $2)
        AND ($3::text IS NULL OR u.name ILIKE $3 OR u.email ILIKE $3 OR u.phone ILIKE $3)
+       AND u.email IS DISTINCT FROM $6
      ORDER BY u.name LIMIT $4 OFFSET $5`,
-    [MANAGED.includes(role) || role === 'admin' ? role : null, branchId || null, q ? likeOf(q) : null, limit, offset])
+    [MANAGED.includes(role) || role === 'admin' ? role : null, branchId || null, q ? likeOf(q) : null, limit, offset, WALK_IN_EMAIL])
   sendPage(res, rows, clean)
 }))
 
@@ -47,14 +56,18 @@ router.post('/', wrap(async (req, res) => {
   const { password, role, branchId } = req.body
   if (!MANAGED.includes(role)) throw fail(400, 'Role must be staff or customer')
   const name = str(req.body.name, { max: 100, label: 'Name', required: true })
-  const email = str(req.body.email, { max: 254, label: 'Email', required: true }).toLowerCase()
-  if (!isEmail(email)) throw fail(400, 'Enter a valid email')
-  checkPassword(password)
-  if (role === 'staff') await checkBranch(branchId)
-  const user = await createUser({
-    name, email, password, phone: str(req.body.phone, { max: 30, label: 'Phone' }) || null, role,
-    branchId: role === 'staff' ? branchId : null,
-  })
+  const phone = str(req.body.phone, { max: 30, label: 'Phone' }) || null
+  let fields
+  if (role === 'staff') {
+    await checkBranch(branchId)
+    fields = { pin: checkPin(req.body.pin), dailyWage: checkWage(req.body.dailyWage), branchId }
+  } else {
+    const email = str(req.body.email, { max: 254, label: 'Email', required: true }).toLowerCase()
+    if (!isEmail(email)) throw fail(400, 'Enter a valid email')
+    checkPassword(password)
+    fields = { email, password }
+  }
+  const user = await createUser({ name, phone, role, ...fields }).catch(dup)
   res.status(201).json(clean(await one(user.id)))
 }))
 
@@ -66,15 +79,22 @@ router.put('/:id', wrap(async (req, res) => {
   const set = (col, v) => { vals.push(v); sets.push(`${col} = $${vals.length}`) }
 
   if (name !== undefined) set('name', str(name, { max: 100, label: 'Name', required: true }))
-  if (email !== undefined) {
+  if (email !== undefined && user.role === 'customer') {
     const e = str(email, { max: 254, label: 'Email', required: true }).toLowerCase()
     if (!isEmail(e)) throw fail(400, 'Enter a valid email')
     set('email', e)
   }
   if (phone !== undefined) set('phone', str(phone, { max: 30, label: 'Phone' }) || null)
   if (typeof active === 'boolean') set('active', active)
-  if (branchId !== undefined && user.role === 'staff') { await checkBranch(branchId); set('branch_id', branchId) }
-  if (password) { // blank = keep current. A reset also ends the user's existing sessions.
+  if (user.role === 'staff') {
+    if (branchId !== undefined) { await checkBranch(branchId); set('branch_id', branchId) }
+    if (req.body.pin !== undefined && checkPin(req.body.pin) !== user.pin) { // a new PIN ends the old holder's sessions
+      set('pin', String(req.body.pin))
+      sets.push('password_changed_at = now()')
+    }
+    if (req.body.dailyWage !== undefined) set('daily_wage', checkWage(req.body.dailyWage))
+  }
+  if (password && user.role === 'customer') { // blank = keep current. A reset also ends the user's existing sessions.
     checkPassword(password)
     set('password', await hashPassword(password))
     sets.push('password_changed_at = now()')
@@ -82,7 +102,7 @@ router.put('/:id', wrap(async (req, res) => {
 
   if (sets.length) {
     vals.push(user.id)
-    await query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${vals.length}`, vals)
+    await query(`UPDATE users SET ${sets.join(', ')} WHERE id = $${vals.length}`, vals).catch(dup)
   }
   res.json(clean(await one(user.id)))
 }))

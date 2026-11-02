@@ -9,6 +9,13 @@ const PW = 'Password123!'
 const as = {}
 let blv, sid, brand, product, profitBefore, revenueBefore
 
+async function loginPin(pin) {
+  const agent = request.agent(app)
+  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  expect(r.status, `pin login ${pin}`).toBe(200)
+  return agent
+}
+
 async function login(email) {
   const agent = request.agent(app)
   expect((await agent.post('/api/auth/login').send({ email, password: PW })).status).toBe(200)
@@ -23,10 +30,10 @@ beforeAll(async () => {
   blv = (await query("SELECT id FROM branches WHERE area = 'Belvedere'")).rows[0].id
   sid = (await query("SELECT id FROM branches WHERE area = 'Sidcup'")).rows[0].id
   as.customer = await login('customer@demo.com')
-  as.staff = await login('staff@demo.com') // Belvedere
+  as.staff = await loginPin('1234') // Belvedere
   as.admin = await login('admin@demo.com')
-  profitBefore = (await as.staff.get('/api/vapes/margins/summary')).body.profitToDate
-  revenueBefore = (await as.staff.get('/api/vapes/dashboard')).body.revenueLast30Days
+  profitBefore = (await as.admin.get('/api/vapes/margins/summary')).body.profitToDate
+  revenueBefore = (await as.admin.get('/api/vapes/dashboard')).body.revenueLast30Days
 })
 
 afterAll(async () => {
@@ -44,8 +51,9 @@ test('only admin can manage the catalogue; the public sees active products only'
   expect(b.status).toBe(201)
   brand = b.body
   const p = await as.admin.post('/api/vapes/products').send({
-    name: 'Test Vape Mango Ice', brandId: brand.id, kind: 'E-liquid', flavour: 'Mango ice', flavourGroup: 'Fruit', nicotineMg: 10, sizeMl: 10, price: 20, active: true,
+    name: 'Test Vape Mango Ice', brandId: brand.id, kind: 'E-liquid', flavour: 'Mango ice', flavourGroup: 'Fruit', nicotineMg: 10, sizeMl: 10, price: 20, costPrice: 8, active: true,
   })
+  expect((await as.admin.post('/api/vapes/products').send({ name: 'Test Vape No Cost', brandId: brand.id, kind: 'E-liquid', nicotineMg: 10, price: 5 })).status, 'bought-for is required').toBe(400)
   expect(p.status).toBe(201)
   product = p.body
   expect(product.brand).toBe('Test Vape Brand')
@@ -57,7 +65,7 @@ test('only admin can manage the catalogue; the public sees active products only'
 })
 
 test('the schema refuses a nicotine strength above the UK limit and unknown kinds', async () => {
-  const base = { name: 'Test Vape Bad', brandId: brand.id, price: 5 }
+  const base = { name: 'Test Vape Bad', brandId: brand.id, price: 5, costPrice: 2 }
   expect((await as.admin.post('/api/vapes/products').send({ ...base, kind: 'E-liquid', nicotineMg: 21 })).status).toBe(400)
   expect((await as.admin.post('/api/vapes/products').send({ ...base, kind: 'Disposable', nicotineMg: 0 })).status).toBe(400)
 })
@@ -127,14 +135,15 @@ test('staff move an order along; collecting needs payment; scope holds', async (
 })
 
 test('vape profit is its own report: 3 sold at £20 that cost £8 = £36', async () => {
-  const sum = (await as.staff.get('/api/vapes/margins/summary')).body
+  const sum = (await as.admin.get('/api/vapes/margins/summary')).body
   expect(Math.round((sum.profitToDate - profitBefore) * 100) / 100).toBe(36) // the seed also has demo sales
-  const row = (await as.staff.get('/api/vapes/margins?q=Mango')).body.find((r) => r.productId === product.id)
+  const row = (await as.admin.get('/api/vapes/margins?q=Mango')).body.find((r) => r.productId === product.id)
   expect(row.cost).toBe(8)
   expect(row.unitProfit).toBe(12)
   expect(row.marginPct).toBe(60)
   expect(row.sold).toBe(3)
-  const dash = (await as.staff.get('/api/vapes/dashboard')).body
+  const dash = (await as.admin.get('/api/vapes/dashboard')).body
+  expect((await as.staff.get('/api/vapes/dashboard')).body, 'staff get no money figures').not.toHaveProperty('revenueLast30Days')
   expect(Math.round((dash.revenueLast30Days - revenueBefore) * 100) / 100).toBe(60)
   expect((await as.customer.get('/api/vapes/dashboard')).status).toBe(403)
 })
