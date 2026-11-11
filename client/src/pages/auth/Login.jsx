@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import Icon from '../../components/ui/Icon'
 import AuthShell, { PasswordField } from '../../components/auth/AuthShell'
 import { WORKSPACE } from '../../constants'
 
@@ -38,6 +39,8 @@ export default function Login() {
         <PasswordField id="password" label="Password" autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
         <button className="btn btn-primary btn-lg" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       </form>
+      <hr className="my-3" />
+      <Link to="/till" className="btn btn-outline-secondary w-100"><Icon name="receipt" size={20} />Open the till (staff)</Link>
     </AuthShell>
   )
 }

@@ -24,7 +24,7 @@ export default function StaffLogin() {
   }
 
   return (
-    <AuthShell title="Staff login" subtitle="Type your 4-digit PIN." footer={<Link to="/login">Customer login</Link>}>
+    <AuthShell title="Staff login" subtitle="Type your 4-digit PIN." footer={<><Link to="/till" className="fw-semibold">Open the till</Link> · <Link to="/login">Customer login</Link></>}>
       <label className="form-label visually-hidden" htmlFor="pin">PIN</label>
       <input id="pin" className="form-control form-control-lg text-center" style={{ letterSpacing: '1rem', fontSize: '2rem' }}
         type="password" inputMode="numeric" autoComplete="off" maxLength={4} autoFocus disabled={busy} value={pin} onChange={change} />
