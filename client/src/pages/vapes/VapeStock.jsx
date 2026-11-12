@@ -58,7 +58,7 @@ function Row({ p, branchId }) {
   }
   return (
     <tr>
-      <td>{label}<span className="d-block small text-secondary">{p.kind}</span></td>
+      <td>{label}<span className="d-block small text-secondary">{p.kind}{p.barcode && <> · <span className="font-monospace">{p.barcode}</span></>}</span></td>
       <td>{nicotineLabel(p.nicotineMg)}</td>
       <td>
         <div className="input-group input-group-sm">

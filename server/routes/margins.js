@@ -42,7 +42,7 @@ router.get('/', wrap(async (req, res) => {
      rec AS (SELECT i.product_id, sum(i.qty)::int AS units FROM delivery_items i JOIN deliveries d ON d.id = i.delivery_id
              WHERE ${sd.sql} GROUP BY i.product_id),
      held AS (SELECT s.product_id, sum(s.stock)::int AS units FROM branch_stock s WHERE ${ss.sql} GROUP BY s.product_id)
-     SELECT p.id, p.name, p.brand, p.condition, p.price, c.avg AS cost, c.src AS cost_source,
+     SELECT p.id, p.name, p.brand, p.barcode, p.condition, p.price, c.avg AS cost, c.src AS cost_source,
             COALESCE(rec.units, 0) AS received, COALESCE(held.units, 0) AS in_stock,
             COALESCE(sold.units, 0) AS sold, COALESCE(sold.revenue, 0) AS revenue, count(*) OVER() AS total_count
      FROM products p
@@ -54,7 +54,7 @@ router.get('/', wrap(async (req, res) => {
   res.json(rows.map((r) => {
     const cost = r.cost == null ? null : Number(r.cost)
     return {
-      productId: r.id, name: r.name, brand: r.brand, condition: r.condition,
+      productId: r.id, name: r.name, brand: r.brand, barcode: r.barcode, condition: r.condition,
       sellPrice: Number(r.price), cost, costSource: r.cost_source, unitProfit: unitProfit(r.price, cost), marginPct: marginPct(r.price, cost),
       received: r.received, inStock: r.in_stock, sold: r.sold,
       // Earned so far = what customers paid minus what those pieces cost on average.

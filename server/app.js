@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 import { config } from './config.js'
 import { query } from './db.js'
 import { apiLimiter } from './middleware/limits.js'
+import { protect, requireRole } from './middleware/auth.js'
 import { requestLogger } from './middleware/logger.js'
 import { notFound, errorHandler } from './middleware/error.js'
 import authRoutes from './routes/auth.js'
@@ -24,6 +25,7 @@ import vapeRoutes from './routes/vapes/index.js'
 import userRoutes from './routes/users.js'
 import shiftRoutes from './routes/shifts.js'
 import tillRoutes from './routes/till.js'
+import branchRoutes from './routes/branchStock.js'
 import { products, categories, services, branches } from './routes/catalogue.js'
 
 const app = express()
@@ -79,6 +81,7 @@ app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/shifts', shiftRoutes)
 app.use('/api/till', tillRoutes)
+app.use('/api/branch', protect, requireRole('staff'), branchRoutes)
 app.use('/api', notFound)
 
 // One deploy: when client/dist exists (npm run build in client/) this server also serves the website.

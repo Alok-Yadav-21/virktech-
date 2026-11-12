@@ -1,12 +1,11 @@
 import { Router } from 'express'
-import { query, tx } from '../db.js'
+import { tx } from '../db.js'
 import { protect, requireRole } from '../middleware/auth.js'
 import { fail, wrap } from '../utils/validate.js'
 import { branchFor } from '../utils/scope.js'
 import { pageOf, sendPage } from '../utils/paging.js'
-import { nextReference } from '../utils/reference.js'
 import { stockDeltas } from '../utils/rules.js'
-import { findDeliveries, toDelivery, itemsOf, readHead, readItems, checkProducts, applyDeltas, writeItems } from '../utils/deliveries.js'
+import { findDeliveries, toDelivery, itemsOf, readHead, readItems, checkProducts, applyDeltas, writeItems, receiveDelivery } from '../utils/deliveries.js'
 
 const router = Router()
 router.use(protect, requireRole('staff', 'admin'))
@@ -14,7 +13,7 @@ router.use(protect, requireRole('staff', 'admin'))
 // Out-of-scope ids get 404, like orders and repairs.
 async function load(req) {
   const id = Number(req.params.id)
-  const [row] = Number.isInteger(id) ? await findDeliveries(req.user, { id }) : []
+  const [row] = Number.isInteger(id) ? await findDeliveries(req.user, { id, today: req.user.role === 'staff' }) : []
   if (!row) throw fail(404, 'Delivery not found')
   return row
 }
@@ -25,27 +24,14 @@ const respond = async (req, res, id, status = 200) => {
 
 router.get('/', wrap(async (req, res) => {
   const { limit, offset } = pageOf(req)
-  sendPage(res, await findDeliveries(req.user, { q: req.query.q, limit, offset }), toDelivery)
+  sendPage(res, await findDeliveries(req.user, { q: req.query.q, today: req.user.role === 'staff', limit, offset }), toDelivery)
 }))
 
 router.get('/:id', wrap(async (req, res) => respond(req, res, (await load(req)).id)))
 
 // Receiving a delivery records it AND adds the pieces to that branch's stock, all or nothing.
 router.post('/', wrap(async (req, res) => {
-  const branchId = branchFor(req)
-  if (!(await query('SELECT 1 FROM branches WHERE id = $1 AND active = true', [branchId])).rowCount) throw fail(400, 'Choose an active branch')
-  const head = readHead(req.body)
-  const items = readItems(req.body.items)
-  await checkProducts(items)
-  const reference = await nextReference('DEL')
-  const id = await tx(async (db) => {
-    const { rows: [d] } = await db.query(
-      'INSERT INTO deliveries (reference, supplier, branch_id, received_on, note, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      [reference, head.supplier, branchId, head.receivedOn, head.note, req.user.id])
-    await writeItems(db, d.id, items)
-    await applyDeltas(db, branchId, stockDeltas([], items))
-    return d.id
-  })
+  const id = await receiveDelivery(req.user, branchFor(req), req.body)
   await respond(req, res, id, 201)
 }))
 

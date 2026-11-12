@@ -8,15 +8,9 @@ import { asDay, fail, wrap } from '../utils/validate.js'
 const router = Router()
 router.use(protect)
 
-// Times always come from the server clock; the body is never trusted for who, where or when.
-const mine = requireRole('staff')
+// Hours and wages are admin only: staff get no route here. Times always come from the server clock.
 
-router.get('/current', mine, wrap(async (req, res) => {
-  const { rows } = await query(`SELECT ${SHIFT} FROM shifts WHERE user_id = $1 AND ended_at IS NULL`, [req.user.id])
-  res.json({ shift: rows[0] || null, serverNow: new Date() }) // the screen times itself against serverNow, not the tablet clock
-}))
-
-// Starting and ending shifts happens only at the till (routes/till.js); the dashboard just shows them.
+// Starting and ending shifts happens only at the till (routes/till.js).
 
 // Admin: who is working right now, in every branch.
 router.get('/now', requireRole('admin'), wrap(async (req, res) => {
@@ -27,11 +21,10 @@ router.get('/now', requireRole('admin'), wrap(async (req, res) => {
   res.json(rows)
 }))
 
-// ?from=&to=&userId=&branchId=  Days are UK days. Default = this month so far. Staff only ever get their own shifts.
-router.get('/', requireRole('staff', 'admin'), wrap(async (req, res) => {
+// ?from=&to=&userId=&branchId=  Days are UK days. Default = this month so far.
+router.get('/', requireRole('admin'), wrap(async (req, res) => {
   const from = asDay(req.query.from, 'From')
   const to = asDay(req.query.to, 'To')
-  const admin = req.user.role === 'admin'
   // ponytail: capped at 1000 rows (a month of a small team); add paging if a range ever needs more.
   const { rows } = await query(
     `SELECT s.id, s.user_id AS "userId", u.name AS "staffName", b.area AS "branchName",
@@ -43,7 +36,7 @@ router.get('/', requireRole('staff', 'admin'), wrap(async (req, res) => {
                  AND COALESCE($2::date, (now() AT TIME ZONE 'Europe/London')::date)
        AND ($3::int IS NULL OR s.user_id = $3) AND ($4::int IS NULL OR s.branch_id = $4)
      ORDER BY s.started_at DESC LIMIT 1000`,
-    [from, to, admin ? Number(req.query.userId) || null : req.user.id, admin ? Number(req.query.branchId) || null : null])
+    [from, to, Number(req.query.userId) || null, Number(req.query.branchId) || null])
 
   const now = new Date()
   const earners = dayEarners(rows)

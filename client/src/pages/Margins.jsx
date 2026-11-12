@@ -84,7 +84,7 @@ export default function Margins() {
               <tbody>
                 {data.map((p) => (
                   <tr key={p.productId}>
-                    <td>{p.name}<span className="d-block small text-secondary">{p.condition}</span></td>
+                    <td>{p.name}<span className="d-block small text-secondary">{p.condition}{p.barcode && <> · <span className="font-monospace">{p.barcode}</span></>}</span></td>
                     <td className="text-end">{cell(p)}</td>
                     <td className="text-end">{gbp(p.sellPrice)}</td>
                     <td className={`text-end ${tone(p.unitProfit)}`}>{money(p.unitProfit)}</td>

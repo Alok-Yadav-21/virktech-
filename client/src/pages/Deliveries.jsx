@@ -4,6 +4,8 @@ import api from '../api'
 import useFetch from '../hooks/useFetch'
 import useDebounce from '../hooks/useDebounce'
 import { useAuth } from '../context/AuthContext'
+import KindTabs from '../components/KindTabs'
+import VapeDeliveries from './vapes/VapeDeliveries'
 import ListFilters from '../components/ListFilters'
 import DataTable from '../components/DataTable'
 import DeliveryForm from '../components/DeliveryForm'
@@ -12,6 +14,10 @@ import { gbp, plural } from '../format'
 
 // Wholesale deliveries received. Saving one adds its pieces to the branch's stock; deleting takes them back out.
 export default function Deliveries() {
+  return <KindTabs electronics={<ElectronicsDeliveries />} vapes={<VapeDeliveries />} />
+}
+
+function ElectronicsDeliveries() {
   const { user } = useAuth()
   const [q, setQ] = useState('')
   const search = useDebounce(q.trim())

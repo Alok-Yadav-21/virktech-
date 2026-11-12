@@ -30,7 +30,7 @@ export default function Login() {
   }
 
   return (
-    <AuthShell title="Welcome back" subtitle="Log in to book repairs, track orders and use your points." footer={<>New here? <Link to="/register" state={{ from }} className="fw-semibold">Create an account</Link> · <Link to="/staff-login">Staff PIN login</Link></>}>
+    <AuthShell title="Welcome back" subtitle="Log in to book repairs, track orders and use your points." footer={<>New here? <Link to="/register" state={{ from }} className="fw-semibold">Create an account</Link></>}>
       <form className="d-grid gap-3" onSubmit={submit}>
         <div>
           <label className="form-label" htmlFor="email">Email</label>

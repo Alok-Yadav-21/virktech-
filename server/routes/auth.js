@@ -1,22 +1,14 @@
 import { Router } from 'express'
-import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
 import { body, validationResult } from 'express-validator'
 import { query } from '../db.js'
 import { createUser, hashPassword, toPublic, DUMMY_HASH } from '../utils/users.js'
 import { protect } from '../middleware/auth.js'
 import { loginLimiter, pinLimiter, registerLimiter } from '../middleware/limits.js'
-import { config } from '../config.js'
+import { COOKIE, setCookie } from '../utils/session.js'
 import { fail, str, wrap } from '../utils/validate.js'
 
 const router = Router()
-
-const COOKIE = { httpOnly: true, sameSite: 'lax', secure: config.isProd, path: '/' }
-const setCookie = (res, user) => {
-  // pv ties the token to the password it was issued under; changing the password invalidates it (no clock comparison).
-  const token = jwt.sign({ id: user.id, pv: user.password_changed_at?.getTime() ?? 0 }, process.env.JWT_SECRET, { expiresIn: '7d' })
-  res.cookie('token', token, { ...COOKIE, maxAge: 7 * 24 * 3600 * 1000 })
-}
 
 const check = (req, res, next) => {
   const errs = validationResult(req)
@@ -90,6 +82,7 @@ router.patch('/me', protect, wrap(async (req, res) => {
   if (phone !== undefined) set('phone', str(phone, { max: 30, label: 'Phone' }) || null)
   let changedPassword = false
   if (newPassword) {
+    if (req.user.role === 'staff') throw fail(403, 'Only an admin can change staff sign-in details')
     if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 200) throw fail(400, 'Password must be at least 8 characters')
     if (!req.user.password || !(await bcrypt.compare(String(currentPassword || ''), req.user.password))) throw fail(400, 'Current password is wrong')
     set('password', await hashPassword(newPassword))

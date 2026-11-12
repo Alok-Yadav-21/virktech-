@@ -137,3 +137,10 @@ test('a deactivated account is locked out on its next request', async () => {
   await query('UPDATE users SET active = false WHERE email = $1', [TEMP.other])
   expect((await as.other.get('/api/auth/me')).status).toBe(401)
 })
+
+test('staff cannot change a password; name and phone still save', async () => {
+  const r = await as.staff.patch('/api/auth/me').send({ currentPassword: 'x', newPassword: 'NewPassword123!' })
+  expect(r.status).toBe(403)
+  expect((await as.staff.get('/api/auth/me')).status, 'session untouched').toBe(200)
+  expect((await as.staff.patch('/api/auth/me').send({ phone: '07000 000000' })).status).toBe(200)
+})

@@ -3,9 +3,15 @@ import toast from 'react-hot-toast'
 import api from '../api'
 import useFetch from '../hooks/useFetch'
 import { useAuth } from '../context/AuthContext'
+import KindTabs from '../components/KindTabs'
+import VapeStock from './vapes/VapeStock'
 
-// Stock is counted per branch. Staff see their own branch; admin chooses one.
+// Stock is counted per branch. Staff see their own branch; admin chooses one. The buttons above switch between the two ranges.
 export default function Stock() {
+  return <KindTabs electronics={<ElectronicsStock />} vapes={<VapeStock />} />
+}
+
+function ElectronicsStock() {
   const { user } = useAuth()
   const admin = user.role === 'admin'
   const { data: branches } = useFetch(admin ? '/branches' : null) // staff work on their own branch
@@ -55,7 +61,7 @@ function Row({ p, branchId }) {
   }
   return (
     <tr>
-      <td>{p.name}</td>
+      <td>{p.name}{p.barcode && <span className="d-block small text-secondary font-monospace">{p.barcode}</span>}</td>
       <td>{p.condition}</td>
       <td>
         <div className="input-group input-group-sm">

@@ -1,20 +1,19 @@
 import { Router } from 'express'
-import { query, tx } from '../../db.js'
+import { tx } from '../../db.js'
 import { protect, requireRole } from '../../middleware/auth.js'
 import { fail, wrap } from '../../utils/validate.js'
 import { branchFor } from '../../utils/scope.js'
 import { pageOf, sendPage } from '../../utils/paging.js'
-import { nextVapeReference } from '../../utils/vapeReference.js'
 import { stockDeltas } from '../../utils/rules.js'
 import { toDelivery, readHead, readItems } from '../../utils/deliveries.js'
-import { findVapeDeliveries, vapeItemsOf, checkVapeProducts, applyVapeDeltas, writeVapeItems } from '../../utils/vapeDeliveries.js'
+import { findVapeDeliveries, vapeItemsOf, checkVapeProducts, applyVapeDeltas, writeVapeItems, receiveVapeDelivery } from '../../utils/vapeDeliveries.js'
 
 const router = Router()
 router.use(protect, requireRole('staff', 'admin'))
 
 async function load(req) {
   const id = Number(req.params.id)
-  const [row] = Number.isInteger(id) ? await findVapeDeliveries(req.user, { id }) : []
+  const [row] = Number.isInteger(id) ? await findVapeDeliveries(req.user, { id, today: req.user.role === 'staff' }) : []
   if (!row) throw fail(404, 'Delivery not found')
   return row
 }
@@ -25,27 +24,14 @@ const respond = async (req, res, id, status = 200) => {
 
 router.get('/', wrap(async (req, res) => {
   const { limit, offset } = pageOf(req)
-  sendPage(res, await findVapeDeliveries(req.user, { q: req.query.q, limit, offset }), toDelivery)
+  sendPage(res, await findVapeDeliveries(req.user, { q: req.query.q, today: req.user.role === 'staff', limit, offset }), toDelivery)
 }))
 
 router.get('/:id', wrap(async (req, res) => respond(req, res, (await load(req)).id)))
 
 // Receiving a delivery records it AND adds the pieces to that branch's vape stock, all or nothing.
 router.post('/', wrap(async (req, res) => {
-  const branchId = branchFor(req)
-  if (!(await query('SELECT 1 FROM branches WHERE id = $1 AND active = true', [branchId])).rowCount) throw fail(400, 'Choose an active branch')
-  const head = readHead(req.body)
-  const items = readItems(req.body.items)
-  await checkVapeProducts(items)
-  const reference = await nextVapeReference('DEL')
-  const id = await tx(async (db) => {
-    const { rows: [d] } = await db.query(
-      'INSERT INTO vape_deliveries (reference, supplier, branch_id, received_on, note, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-      [reference, head.supplier, branchId, head.receivedOn, head.note, req.user.id])
-    await writeVapeItems(db, d.id, items)
-    await applyVapeDeltas(db, branchId, stockDeltas([], items))
-    return d.id
-  })
+  const id = await receiveVapeDelivery(req.user, branchFor(req), req.body)
   await respond(req, res, id, 201)
 }))
 

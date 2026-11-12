@@ -4,6 +4,7 @@ import pool from './db.js'
 import { runMigrations } from './migrate.js'
 import { seedVapesDemo } from './seedVapes.js'
 import { createUser } from './utils/users.js'
+import { fillBarcodes } from './utils/barcode.js'
 
 const load = (n) => JSON.parse(readFileSync(new URL(`./data/${n}.json`, import.meta.url), 'utf8'))
 
@@ -37,6 +38,7 @@ export async function seedStarter(db = pool) {
       [p.name, p.brand, cats[p.category], p.price, p.wasPrice ?? null, p.condition, p.image, p.description])
     productIds.push(rows[0].id)
   }
+  await fillBarcodes(db)
   return { branches, productIds }
 }
 
@@ -69,6 +71,7 @@ export async function seedDemo({ force = false } = {}) {
     { name: 'Demo Admin', email: 'admin@demo.com', role: 'admin' },
   ]) ids[u.role] = (await createUser({ ...u, password: u.noPassword ? null : 'Password123!' })).id
   await seedVapesDemo(pool, branches, ids.customer)
+  await fillBarcodes(pool)
 }
 
 // `npm run seed` = demo data. `npm run seed:starter` = real-shop starter catalogue (needs `npm run migrate` first).

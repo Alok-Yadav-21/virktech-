@@ -32,6 +32,7 @@ import Me from './pages/customer/Me'
 import CounterLoyalty from './pages/staff/CounterLoyalty'
 import LoyaltyAdjust from './pages/admin/LoyaltyAdjust'
 import Stock from './pages/Stock'
+import Inventory from './pages/inventory/Inventory'
 import Deliveries from './pages/Deliveries'
 import Margins from './pages/Margins'
 import Hours from './pages/Hours'
@@ -114,7 +115,7 @@ export default function App() {
       {/* The till is full screen (no sidebar) and has its own PIN sign-in, apart from the dashboards; the server enforces it. */}
       <Route path="/till" element={<Till />} />
       {workspace('/app', ROLES.CUSTOMER, [<Route key="book" path="book" element={<BookRepair />} />, <Route key="sell" path="sell" element={<SellDevice />} />, <Route key="loy" path="loyalty" element={<Loyalty />} />, <Route key="me" path="me" element={<Me />} />, <Route key="vol" path="vape-orders" element={<VapeOrders />} />, <Route key="vod" path="vape-orders/:ref" element={<VapeOrderDetail />} />, ...repairRoutes, ...orderRoutes, ...tradeInRoutes])}
-      {workspace('/staff', ROLES.STAFF, [...repairRoutes, ...orderRoutes, ...tradeInRoutes, ...vapeStaffRoutes, <Route key="stock" path="stock" element={<Stock />} />, <Route key="del" path="deliveries" element={<Deliveries />} />, <Route key="hours" path="hours" element={<Hours />} />, <Route key="loy" path="loyalty" element={<CounterLoyalty />} />])}
+      {workspace('/staff', ROLES.STAFF, [...repairRoutes, ...orderRoutes, ...tradeInRoutes, ...vapeStaffRoutes, <Route key="stock" path="stock" element={<Inventory />} />, <Route key="loy" path="loyalty" element={<CounterLoyalty />} />])}
       {workspace('/admin', ROLES.ADMIN, [
         ...repairRoutes,
         ...orderRoutes,

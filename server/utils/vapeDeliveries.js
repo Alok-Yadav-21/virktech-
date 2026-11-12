@@ -1,8 +1,10 @@
-import { query } from '../db.js'
+import { query, tx } from '../db.js'
 import { scopeClause } from './scope.js'
 import { fail } from './validate.js'
 import { likeOf } from './paging.js'
-import { lineCost } from './rules.js'
+import { lineCost, stockDeltas } from './rules.js'
+import { readHead, readItems } from './deliveries.js'
+import { nextVapeReference } from './vapeReference.js'
 
 // Vape twins of the helpers in deliveries.js (same shape, vape_* tables). Validation (readHead, readItems)
 // and the row mapper (toDelivery) are shared with the electronics side and imported from there.
@@ -17,11 +19,14 @@ const SELECT = `
   LEFT JOIN (SELECT delivery_id, sum(qty) AS units, sum(qty * unit_cost) AS cost, count(*) AS lines
              FROM vape_delivery_items GROUP BY delivery_id) t ON t.delivery_id = d.id`
 
-export async function findVapeDeliveries(user, { id, q, limit = 100, offset = 0 } = {}) {
+const TODAY = "(d.created_at AT TIME ZONE 'Europe/London')::date = (now() AT TIME ZONE 'Europe/London')::date"
+
+export async function findVapeDeliveries(user, { id, q, today, limit = 100, offset = 0 } = {}) {
   const scope = scopeClause(user, { branch: 'd.branch_id' })
   const where = [scope.sql]
   const params = [...scope.params]
   if (id) { params.push(id); where.push(`d.id = $${params.length}`) }
+  if (today) where.push(TODAY)
   if (q) {
     params.push(likeOf(q))
     where.push(`(d.reference ILIKE $${params.length} OR d.supplier ILIKE $${params.length})`)
@@ -72,4 +77,21 @@ export async function writeVapeItems(db, deliveryId, items) {
     `INSERT INTO vape_delivery_items (delivery_id, product_id, qty, unit_cost)
      SELECT $1, * FROM unnest($2::int[], $3::int[], $4::numeric[])`,
     [deliveryId, items.map((i) => i.productId), items.map((i) => i.qty), items.map((i) => i.unitCost)])
+}
+
+// Vape twin of receiveDelivery: records the delivery and adds the pieces to vape stock, all or nothing.
+export async function receiveVapeDelivery(user, branchId, body) {
+  if (!(await query('SELECT 1 FROM branches WHERE id = $1 AND active = true', [branchId])).rowCount) throw fail(400, 'Choose an active branch')
+  const head = readHead(body)
+  const items = readItems(body.items)
+  await checkVapeProducts(items)
+  const reference = await nextVapeReference('DEL')
+  return tx(async (db) => {
+    const { rows: [d] } = await db.query(
+      'INSERT INTO vape_deliveries (reference, supplier, branch_id, received_on, note, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [reference, head.supplier, branchId, head.receivedOn, head.note, user.id])
+    await writeVapeItems(db, d.id, items)
+    await applyVapeDeltas(db, branchId, stockDeltas([], items))
+    return d.id
+  })
 }

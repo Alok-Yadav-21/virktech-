@@ -18,7 +18,7 @@ export const vapeProducts = crud({
     name: 'name', brandId: 'brand_id', kind: 'kind', flavour: 'flavour', flavourGroup: 'flavour_group', nicotineMg: 'nicotine_mg',
     sizeMl: 'size_ml', price: 'price', wasPrice: 'was_price', image: 'image', description: 'description', active: 'active',
   },
-  adminFields: { costPrice: 'cost_price' }, // what the shop paid for stock that came in before deliveries were recorded
+  adminFields: { costPrice: 'cost_price', barcode: 'barcode' }, // cost_price: what the shop paid before deliveries were recorded; barcode: what the till scans
   // Which branches have it, so a customer knows where they can collect. Registered before /:id.
   setup: (router) => router.get('/:id/availability', wrap(async (req, res) => {
     if (!Number.isInteger(+req.params.id)) throw fail(404, 'Not found')

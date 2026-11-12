@@ -31,7 +31,7 @@ export default function StaffShell() {
       </nav>
       <div className="mt-auto pt-3 border-top d-grid gap-1">
         <p className="small text-secondary px-2 mb-1 text-truncate">{user.name}<br />{user.email}</p>
-        {user.role === 'staff' && <a href="/till" target="_blank" rel="noopener" className="d-flex"><Icon name="receipt" size={20} />Open the till</a>}
+        {user.role === 'staff' && <Link to="/till" className="d-flex"><Icon name="receipt" size={20} />Open the till</Link>}
         <Link to="/" onClick={() => setOpen(false)} className="d-flex"><Icon name="bag" size={20} />View the shop</Link>
         <button type="button" className="vt-side-link" onClick={signOut}><Icon name="logout" size={20} />Log out</button>
       </div>

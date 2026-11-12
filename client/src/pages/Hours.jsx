@@ -53,7 +53,7 @@ function FixEnd({ shift, onDone, onHide }) {
   )
 }
 
-// Days worked and pay (one day's wage per day worked, using the rate stored on that day's first shift). Staff get their own; admin gets everyone.
+// Days worked and pay (one day's wage per day worked, using the rate stored on that day's first shift). Admin only.
 export default function Hours() {
   const { user } = useAuth()
   const admin = user.role === 'admin'
@@ -67,8 +67,8 @@ export default function Hours() {
 
   return (
     <>
-      <h1 className="h3 mb-1">{admin ? 'Staff hours and wages' : 'My hours and wages'}</h1>
-      <p className="text-secondary">Pay is one daily wage for every day you work, however many hours, at the rate set when the day's first shift started. It is before tax. Hours are shown for your records.</p>
+      <h1 className="h3 mb-1">Staff hours and wages</h1>
+      <p className="text-secondary">Pay is one daily wage for every day worked, however many hours, at the rate set when the day's first shift started. It is before tax. Hours are shown for your records.</p>
 
       <div className="row g-2 mb-3">
         <div className="col-6 col-md-3"><label className="form-label small" htmlFor="from">From</label><input id="from" type="date" className="form-control" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} /></div>

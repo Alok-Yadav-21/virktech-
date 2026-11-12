@@ -10,6 +10,7 @@ export const products = {
   columns: [
     { key: 'image', label: '', render: (r) => r.image && <img src={r.image} alt="" width="48" height="36" className="object-fit-cover rounded" /> },
     { key: 'name', label: 'Name' },
+    { key: 'barcode', label: 'Barcode', render: (r) => r.barcode && <span className="font-monospace">{r.barcode}</span> },
     { key: 'category', label: 'Category' },
     { key: 'condition', label: 'Condition' },
     { key: 'price', label: 'Price', render: (r) => gbp(r.price) },
@@ -24,6 +25,7 @@ export const products = {
     { name: 'price', label: 'Price (£)', type: 'number', required: true },
     { name: 'wasPrice', label: 'Was price (£, optional)', type: 'number' },
     { name: 'costPrice', label: 'Bought for (£, per item)', type: 'number', required: true, hint: 'Needed so profit is counted. A recorded delivery takes over once there is one for this product.' },
+    { name: 'barcode', label: 'Barcode / QR text (optional)', hint: 'The text under the barcode or inside the QR code. Optional: staff can also link it at the till by scanning.' },
     { name: 'condition', label: 'Condition', type: 'choice', choices: ['New', 'Used', 'Refurbished'] },
     { name: 'image', label: 'Image path or URL' },
     { name: 'description', label: 'Description', type: 'textarea' },

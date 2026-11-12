@@ -4,7 +4,8 @@ import { query, tx } from '../db.js'
 import { protectTill, requireRole } from '../middleware/auth.js'
 import { pinLimiter } from '../middleware/limits.js'
 import { config } from '../config.js'
-import { startShift, endShift } from '../utils/shifts.js'
+import { startShift, endShift, needShift } from '../utils/shifts.js'
+import { setCookie } from '../utils/session.js'
 import { nextReference } from '../utils/reference.js'
 import { nextVapeReference } from '../utils/vapeReference.js'
 import { pageOf, likeOf } from '../utils/paging.js'
@@ -40,6 +41,10 @@ router.post('/logout', (req, res) => {
 
 router.use(protectTill, requireRole('staff'))
 
+// The person already proved who they are with their PIN, so "Stock & deliveries" opens their staff dashboard without a
+// second PIN. Same account, same rules; hours and wages stay admin-only. One-way: a dashboard session never opens the till.
+router.post('/open-dashboard', (req, res) => { setCookie(res, req.user); res.json({ ok: true }) })
+
 router.get('/me', wrap(async (req, res) => {
   const { rows: [b] } = await query('SELECT area FROM branches WHERE id = $1', [req.user.branch_id])
   const { rows: [shift] } = await query('SELECT 1 AS open FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [req.user.id])
@@ -67,15 +72,6 @@ router.post('/clock', pinLimiter, wrap(async (req, res) => {
   res.json({ name: person.name, action: req.body.action })
 }))
 
-// A sale needs the seller to be on shift, so every sale belongs to someone who is clocked in.
-const needShift = async (req, res, next) => {
-  try {
-    const { rowCount } = await query('SELECT 1 FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [req.user.id])
-    if (!rowCount) throw fail(409, 'Start your shift before selling')
-    next()
-  } catch (e) { next(e) }
-}
-
 const KINDS = ['electronics', 'vape']
 const TODAY = "(paid_at AT TIME ZONE 'Europe/London')::date = (now() AT TIME ZONE 'Europe/London')::date"
 const entry = (req, status, note) => JSON.stringify([{ status, at: new Date().toISOString(), by: req.user.name, note }])
@@ -85,15 +81,15 @@ router.get('/items', wrap(async (req, res) => {
   const { limit, offset } = pageOf(req, { def: 60, max: 200 })
   const { rows } = await query(
     `SELECT *, count(*) OVER() AS total_count FROM (
-       SELECT 'electronics' AS kind, p.id, p.name, concat_ws(' · ', p.brand, p.condition) AS detail, p.price, COALESCE(s.stock, 0)::int AS stock
+       SELECT 'electronics' AS kind, p.id, p.name, concat_ws(' · ', p.brand, p.condition) AS detail, p.price, COALESCE(s.stock, 0)::int AS stock, p.barcode
        FROM products p LEFT JOIN branch_stock s ON s.product_id = p.id AND s.branch_id = $1 WHERE p.active
        UNION ALL
-       SELECT 'vape', p.id, b.name || ' ' || p.name, concat_ws(' · ', p.flavour, p.nicotine_mg::text || 'mg'), p.price, COALESCE(s.stock, 0)::int
+       SELECT 'vape', p.id, b.name || ' ' || p.name, concat_ws(' · ', p.flavour, p.nicotine_mg::text || 'mg'), p.price, COALESCE(s.stock, 0)::int, p.barcode
        FROM vape_products p JOIN vape_brands b ON b.id = p.brand_id LEFT JOIN vape_stock s ON s.product_id = p.id AND s.branch_id = $1 WHERE p.active
      ) i
-     WHERE ($2::text IS NULL OR i.name ILIKE $2 OR i.detail ILIKE $2) AND ($3::text IS NULL OR i.kind = $3)
+     WHERE ($2::text IS NULL OR i.name ILIKE $2 OR i.detail ILIKE $2 OR i.barcode = $6::text) AND ($3::text IS NULL OR i.kind = $3)
      ORDER BY (i.stock > 0) DESC, i.name LIMIT $4 OFFSET $5`,
-    [req.user.branch_id, req.query.q ? likeOf(req.query.q) : null, KINDS.includes(req.query.kind) ? req.query.kind : null, limit, offset])
+    [req.user.branch_id, req.query.q ? likeOf(req.query.q) : null, KINDS.includes(req.query.kind) ? req.query.kind : null, limit, offset, req.query.q ? String(req.query.q).trim() : null]) // a scanned code matches exactly
   res.set('X-Total-Count', String(rows[0]?.total_count ?? 0))
   res.json(rows.map(({ total_count, ...r }) => ({ ...r, price: Number(r.price) })))
 }))

@@ -39,7 +39,7 @@ router.get('/', wrap(async (req, res) => {
      rec AS (SELECT i.product_id, sum(i.qty)::int AS units FROM vape_delivery_items i JOIN vape_deliveries d ON d.id = i.delivery_id
              WHERE ${sd.sql} GROUP BY i.product_id),
      held AS (SELECT s.product_id, sum(s.stock)::int AS units FROM vape_stock s WHERE ${ss.sql} GROUP BY s.product_id)
-     SELECT p.id, p.name, b.name AS brand, p.flavour, p.nicotine_mg, p.price, c.avg AS cost, c.src AS cost_source,
+     SELECT p.id, p.name, b.name AS brand, p.barcode, p.flavour, p.nicotine_mg, p.price, c.avg AS cost, c.src AS cost_source,
             COALESCE(rec.units, 0) AS received, COALESCE(held.units, 0) AS in_stock,
             COALESCE(sold.units, 0) AS sold, COALESCE(sold.revenue, 0) AS revenue, count(*) OVER() AS total_count
      FROM vape_products p JOIN vape_brands b ON b.id = p.brand_id
@@ -51,7 +51,7 @@ router.get('/', wrap(async (req, res) => {
   res.json(rows.map((r) => {
     const cost = r.cost == null ? null : Number(r.cost)
     return {
-      productId: r.id, name: r.name, brand: r.brand, flavour: r.flavour, nicotineMg: r.nicotine_mg,
+      productId: r.id, name: r.name, brand: r.brand, barcode: r.barcode, flavour: r.flavour, nicotineMg: r.nicotine_mg,
       sellPrice: Number(r.price), cost, costSource: r.cost_source, unitProfit: unitProfit(r.price, cost), marginPct: marginPct(r.price, cost),
       received: r.received, inStock: r.in_stock, sold: r.sold,
       profitToDate: cost == null ? null : (pence(r.revenue) - r.sold * pence(cost)) / 100,

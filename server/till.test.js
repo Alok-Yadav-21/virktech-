@@ -147,11 +147,12 @@ const tillAs = async (pin) => {
 test('the till and the dashboard are separate sign-ins', async () => {
   // A dashboard session cannot use the till, and a till session cannot reach anything personal.
   expect((await as.dash.get('/api/till/items')).status).toBe(401)
-  for (const url of ['/api/auth/me', '/api/shifts', '/api/shifts/current', '/api/dashboard/stats']) {
+  for (const url of ['/api/auth/me', '/api/shifts', '/api/dashboard/stats']) {
     expect((await as.staff.get(url)).status, `till session on ${url}`).toBe(401)
   }
   expect((await as.staff.post('/api/shifts/end')).status).toBe(401)
-  expect((await as.dash.get('/api/shifts')).status, 'the dashboard still works').toBe(200)
+  expect((await as.dash.get('/api/shifts')).status, 'staff never see hours or wages').toBe(403)
+  expect((await as.admin.get('/api/shifts')).status).toBe(200)
   // PIN rules: wrong PIN, and only staff PINs.
   expect((await request(app).post('/api/till/login').send({ pin: '0000' })).status).toBe(401)
   expect((await request(app).post('/api/till/login').send({})).status).toBe(401)

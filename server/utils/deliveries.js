@@ -1,8 +1,9 @@
-import { query } from '../db.js'
+import { query, tx } from '../db.js'
 import { scopeClause } from './scope.js'
 import { fail, str } from './validate.js'
 import { likeOf } from './paging.js'
-import { DELIVERY_LIMITS as L, lineCost } from './rules.js'
+import { DELIVERY_LIMITS as L, lineCost, stockDeltas } from './rules.js'
+import { nextReference } from './reference.js'
 
 const SELECT = `
   SELECT d.id, d.reference, d.supplier, d.branch_id, to_char(d.received_on, 'YYYY-MM-DD') AS received_on, d.note, d.created_at,
@@ -15,12 +16,15 @@ const SELECT = `
   LEFT JOIN (SELECT delivery_id, sum(qty) AS units, sum(qty * unit_cost) AS cost, count(*) AS lines
              FROM delivery_items GROUP BY delivery_id) t ON t.delivery_id = d.id`
 
+const TODAY = "(d.created_at AT TIME ZONE 'Europe/London')::date = (now() AT TIME ZONE 'Europe/London')::date"
+
 // Scoped read, like findOrders: staff only ever see their own branch's deliveries.
-export async function findDeliveries(user, { id, q, limit = 100, offset = 0 } = {}) {
+export async function findDeliveries(user, { id, q, today, limit = 100, offset = 0 } = {}) {
   const scope = scopeClause(user, { branch: 'd.branch_id' })
   const where = [scope.sql]
   const params = [...scope.params]
   if (id) { params.push(id); where.push(`d.id = $${params.length}`) }
+  if (today) where.push(TODAY) // the till shows one UK day only
   if (q) {
     params.push(likeOf(q))
     where.push(`(d.reference ILIKE $${params.length} OR d.supplier ILIKE $${params.length})`)
@@ -104,4 +108,22 @@ export async function writeItems(db, deliveryId, items) {
     `INSERT INTO delivery_items (delivery_id, product_id, qty, unit_cost)
      SELECT $1, * FROM unnest($2::int[], $3::int[], $4::numeric[])`,
     [deliveryId, items.map((i) => i.productId), items.map((i) => i.qty), items.map((i) => i.unitCost)])
+}
+
+// Receiving a delivery records it AND adds the pieces to that branch's stock, all or nothing. Returns the delivery id.
+// Used by the dashboard route and the till, so both validate and book stock the same way.
+export async function receiveDelivery(user, branchId, body) {
+  if (!(await query('SELECT 1 FROM branches WHERE id = $1 AND active = true', [branchId])).rowCount) throw fail(400, 'Choose an active branch')
+  const head = readHead(body)
+  const items = readItems(body.items)
+  await checkProducts(items)
+  const reference = await nextReference('DEL')
+  return tx(async (db) => {
+    const { rows: [d] } = await db.query(
+      'INSERT INTO deliveries (reference, supplier, branch_id, received_on, note, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [reference, head.supplier, branchId, head.receivedOn, head.note, user.id])
+    await writeItems(db, d.id, items)
+    await applyDeltas(db, branchId, stockDeltas([], items))
+    return d.id
+  })
 }

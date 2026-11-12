@@ -17,7 +17,7 @@ router.get('/lowest-branch', requireRole('admin'), wrap(async (req, res) => {
 router.get('/', wrap(async (req, res) => {
   const branchId = branchFor(req)
   const { rows } = await query(
-    `SELECT p.id AS "productId", p.name, p.brand, p.condition, COALESCE(s.stock, 0)::int AS stock
+    `SELECT p.id AS "productId", p.name, p.brand, p.condition, p.barcode, COALESCE(s.stock, 0)::int AS stock
      FROM products p LEFT JOIN branch_stock s ON s.product_id = p.id AND s.branch_id = $1
      WHERE p.active = true ORDER BY stock, p.name`, [branchId])
   res.json(rows)

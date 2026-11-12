@@ -83,7 +83,7 @@ export default function VapeMargins() {
               <tbody>
                 {data.map((p) => (
                   <tr key={p.productId}>
-                    <td>{p.brand} {p.name}<span className="d-block small text-secondary">{p.flavour} · {p.nicotineMg ? `${p.nicotineMg}mg` : 'Nicotine free'}</span></td>
+                    <td>{p.brand} {p.name}<span className="d-block small text-secondary">{p.flavour} · {p.nicotineMg ? `${p.nicotineMg}mg` : 'Nicotine free'}{p.barcode && <> · <span className="font-monospace">{p.barcode}</span></>}</span></td>
                     <td className="text-end">{cell(p)}</td>
                     <td className="text-end">{gbp(p.sellPrice)}</td>
                     <td className={`text-end ${tone(p.unitProfit)}`}>{money(p.unitProfit)}</td>

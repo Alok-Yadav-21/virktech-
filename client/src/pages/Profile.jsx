@@ -36,12 +36,15 @@ export default function Profile() {
           <div><label className="form-label" htmlFor="phone">Phone</label><input id="phone" className="form-control" type="tel" inputMode="tel" autoComplete="tel" value={form.phone} onChange={set('phone')} /></div>
         </div>
       </FormSection>
-      <FormSection title="Change password" hint="Leave these empty to keep your current password. Changing it signs you out everywhere else.">
-        <div className="d-grid gap-3">
-          <PasswordField id="current" label="Current password" autoComplete="current-password" required={false} value={form.currentPassword} onChange={set('currentPassword')} />
-          <PasswordField id="new" label="New password" autoComplete="new-password" required={false} hint="At least 8 characters." value={form.newPassword} onChange={set('newPassword')} />
-        </div>
-      </FormSection>
+      {/* Staff sign-in details are changed by an admin only. */}
+      {user.role !== 'staff' && (
+        <FormSection title="Change password" hint="Leave these empty to keep your current password. Changing it signs you out everywhere else.">
+          <div className="d-grid gap-3">
+            <PasswordField id="current" label="Current password" autoComplete="current-password" required={false} value={form.currentPassword} onChange={set('currentPassword')} />
+            <PasswordField id="new" label="New password" autoComplete="new-password" required={false} hint="At least 8 characters." value={form.newPassword} onChange={set('newPassword')} />
+          </div>
+        </FormSection>
+      )}
       <button className="btn btn-primary btn-lg w-100" disabled={busy}>{busy ? 'Saving…' : 'Save changes'}</button>
       <p className="small text-secondary text-center mt-3">Your account home is <a href={WORKSPACE[user.role].home}>{WORKSPACE[user.role].home}</a>.</p>
     </form>

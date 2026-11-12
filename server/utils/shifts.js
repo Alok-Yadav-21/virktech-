@@ -25,3 +25,12 @@ export async function endShift(userId) {
   if (!rows[0]) throw fail(409, 'No shift is running')
   return rows[0]
 }
+
+// Express guard: a sale or a stock change needs the staff member to be on shift, so every action belongs to someone clocked in.
+export const needShift = async (req, res, next) => {
+  try {
+    const { rowCount } = await query('SELECT 1 FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [req.user.id])
+    if (!rowCount) throw fail(409, 'Start your shift first')
+    next()
+  } catch (e) { next(e) }
+}

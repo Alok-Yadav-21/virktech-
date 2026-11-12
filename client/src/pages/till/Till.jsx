@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import api, { errMsg } from '../../api'
 import useFetch from '../../hooks/useFetch'
 import useDebounce from '../../hooks/useDebounce'
+import useIdleLogout from '../../hooks/useIdleLogout'
 import { Chip, EmptyState, ErrorState } from '../../components/ui/primitives'
 import TillCrew from './TillCrew'
 import TillLogin from './TillLogin'
@@ -14,22 +15,31 @@ const TABS = [['', 'All'], ['electronics', 'Electronics'], ['vape', 'Vapes']]
 const keyOf = (i) => `${i.kind}-${i.id}`
 
 // The till signs in on its own (PIN, separate cookie) so nobody at the counter can reach a dashboard, hours or wages.
-// "Switch person" leaves the till and ends nobody's shift.
+// "Log out" leaves the till and ends nobody's shift.
 export default function Till() {
   const [me, setMe] = useState(undefined) // undefined = checking, null = nobody signed in
   const loadMe = () => api.get('/till/me', { quiet: true }).then((r) => setMe(r.data))
     .catch((e) => (e.response?.status === 401 ? setMe(null) : toast.error(errMsg(e))))
   useEffect(() => { loadMe() }, [])
-  const switchPerson = () => api.post('/till/logout').then(() => setMe(null)).catch(() => { /* api.js already toasted */ })
+  const logOut = () => api.post('/till/logout').then(() => setMe(null)).catch(() => { /* api.js already toasted */ })
+  // Ends nobody's shift: it only signs this person out of the till. If the browser will not close the tab (it was not
+  // opened by the till link), go to the shop instead.
+  const closeTill = async () => {
+    try { await api.post('/till/logout') } catch { return /* api.js already toasted; stay put */ }
+    window.close()
+    window.location.assign('/')
+  }
+  // Nobody touching the till for 10 minutes: sign out so the next person at the counter has to type their own PIN.
+  useIdleLogout(() => logOut().then(() => toast('Logged out after 10 minutes of inactivity')), !!me)
 
   if (me === undefined) return <div className="text-center py-5"><div className="spinner-border" /></div>
   if (!me) return <TillLogin onSignedIn={loadMe} />
-  return <Counter me={me} reloadMe={loadMe} onSwitch={switchPerson} />
+  return <Counter me={me} reloadMe={loadMe} onLogOut={logOut} onClose={closeTill} />
 }
 
 // Full-screen counter till: find an item, tap to add, charge. The basket lives in memory only, so a refresh
 // can never bring back an old sale. Prices and stock are always checked again by the server.
-function Counter({ me, reloadMe, onSwitch }) {
+function Counter({ me, reloadMe, onLogOut, onClose }) {
   const [q, setQ] = useState('')
   const [kind, setKind] = useState('')
   const [basket, setBasket] = useState([])
@@ -64,6 +74,15 @@ function Counter({ me, reloadMe, onSwitch }) {
     if (first && search === q.trim()) { add(first); setQ('') }
   }
 
+  // The till already knows who this is, so the staff dashboard opens for them on the delivery tab with no second PIN.
+  // A full page load so the dashboard picks up the new sign-in; the basket here is in memory, so it is not kept.
+  const openStock = async () => {
+    if (basket.length && !window.confirm('The basket will be cleared. Go to the dashboard?')) return
+    try {
+      await api.post('/till/open-dashboard')
+      window.location.assign('/staff/stock?tab=delivery') // opens on Stock & deliveries
+    } catch { /* api.js already toasted why */ }
+  }
   const changed = () => { reloadMe(); crew.reload() }
   const working = (
     <span className="d-flex flex-wrap gap-1">
@@ -81,7 +100,8 @@ function Counter({ me, reloadMe, onSwitch }) {
         <div className="d-grid gap-2">
           <button className="btn btn-primary btn-lg" onClick={startMine}>Start my shift</button>
           <button className="btn btn-outline-secondary" onClick={() => setShowCrew(true)}>Shifts</button>
-          <button className="btn btn-outline-secondary" onClick={onSwitch}>Switch person</button>
+          <button className="btn btn-outline-secondary" onClick={onLogOut}>Log out</button>
+          <button className="btn btn-outline-secondary" onClick={onClose}>Close till</button>
         </div>
         {showCrew && <TillCrew onHide={() => setShowCrew(false)} onChanged={changed} />}
       </div>
@@ -90,12 +110,14 @@ function Counter({ me, reloadMe, onSwitch }) {
 
   return (
     <div className="container-fluid py-3">
-      <div className="d-flex align-items-center gap-3 mb-3">
+      <div className="d-flex flex-wrap align-items-center gap-2 gap-md-3 mb-3">
         <h1 className="h4 mb-0">Till <small className="text-secondary fw-normal">{me.name} · {me.branchName}</small></h1>
         <span className="me-auto d-flex align-items-center gap-2"><small className="text-secondary">On shift:</small>{working}</span>
+        <button className="btn btn-outline-primary" onClick={openStock}>Dashboard</button>
         <button className="btn btn-outline-secondary" onClick={() => setShowCrew(true)}>Shifts</button>
         <button className="btn btn-outline-secondary" onClick={() => setShowToday(true)}>Today</button>
-        <button className="btn btn-outline-secondary" onClick={onSwitch}>Switch person</button>
+        <button className="btn btn-outline-secondary" onClick={onLogOut}>Log out</button>
+        <button className="btn btn-outline-danger" onClick={onClose}>Close till</button>
       </div>
 
       <div className="row g-3">
@@ -114,6 +136,7 @@ function Counter({ me, reloadMe, onSwitch }) {
                   disabled={i.stock < 1} onClick={() => add(i)}>
                   <strong className="d-block lh-sm mb-1">{i.name}</strong>
                   {i.detail && <span className="d-block small text-secondary">{i.detail}</span>}
+                  {i.barcode && <span className="d-block small text-secondary font-monospace">{i.barcode}</span>}
                   <span className="d-flex justify-content-between mt-2">
                     <span className="fw-bold">{gbp(i.price)}</span>
                     <span className={`small ${i.stock < 1 ? 'text-danger' : 'text-secondary'}`}>{i.stock < 1 ? 'Out of stock' : `${i.stock} in stock`}</span>
