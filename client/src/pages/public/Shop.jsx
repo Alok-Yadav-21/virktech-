@@ -69,7 +69,7 @@ export default function Shop() {
           <button type="button" className="vt-chip" onClick={() => setOpen(true)}>
             <Icon name="sliders" size={18} />Filters{activeCount > 0 && <span className="vt-count vt-count--inline" style={{ background: 'var(--vt-green-600)' }}>{activeCount}</span>}
           </button>
-          <select className="form-select form-select-sm w-auto flex-grow-1 flex-md-grow-0" style={{ minHeight: 44, borderRadius: 999 }} aria-label="Sort by" value={sort} onChange={(e) => set('sort', e.target.value === 'featured' ? '' : e.target.value)}>
+          <select className="form-select w-auto flex-grow-1 flex-md-grow-0" style={{ minHeight: 44, borderRadius: 999, minWidth: 0, maxWidth: '100%' }} aria-label="Sort by" value={sort} onChange={(e) => set('sort', e.target.value === 'featured' ? '' : e.target.value)}>
             {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>

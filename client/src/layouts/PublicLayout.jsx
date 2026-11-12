@@ -30,7 +30,7 @@ export default function PublicLayout() {
         <div className="container">
           <div className="vt-header-row">
             <Link to="/" className="vt-brand" aria-label="Virktech home">
-              <span className="vt-mobile-only"><LogoMark size={40} /></span>
+              <span className="vt-mobile-only"><LogoMark size={44} /></span>
               <span className="vt-desktop-only align-items-center gap-2"><Logo subtitle /></span>
             </Link>
             <nav className="vt-navlinks ms-2" aria-label="Sections">

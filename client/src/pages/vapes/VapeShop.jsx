@@ -68,8 +68,8 @@ export default function VapeShop() {
           <button type="button" className="vt-chip" onClick={() => setOpen(true)}>
             <Icon name="sliders" size={18} />Filters{activeCount > 0 && <span className="vt-count vt-count--inline" style={{ background: 'var(--vt-green-600)' }}>{activeCount}</span>}
           </button>
-          <input type="search" className="form-control form-control-sm" style={{ minHeight: 44, borderRadius: 999 }} placeholder="Search flavour or brand" aria-label="Search vapes" value={q} onChange={(e) => set('q', e.target.value)} />
-          <select className="form-select form-select-sm w-auto d-none d-sm-block" style={{ minHeight: 44, borderRadius: 999 }} aria-label="Sort by" value={sort} onChange={(e) => set('sort', e.target.value === 'featured' ? '' : e.target.value)}>
+          <input type="search" className="form-control" style={{ minHeight: 44, borderRadius: 999, minWidth: 0 }} placeholder="Search flavour or brand" aria-label="Search vapes" value={q} onChange={(e) => set('q', e.target.value)} />
+          <select className="form-select w-auto d-none d-sm-block" style={{ minHeight: 44, borderRadius: 999 }} aria-label="Sort by" value={sort} onChange={(e) => set('sort', e.target.value === 'featured' ? '' : e.target.value)}>
             {SORTS.filter(([v]) => ['featured', 'price-asc', 'price-desc'].includes(v)).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </div>

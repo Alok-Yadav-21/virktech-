@@ -71,7 +71,7 @@ export function SectionHead({ title, to, linkLabel = 'See all' }) {
   return (
     <div className="d-flex align-items-end justify-content-between gap-3 mb-3">
       <h2 className="h4 mb-0">{title}</h2>
-      {to && <Link to={to} className="fw-semibold text-nowrap d-inline-flex align-items-center gap-1">{linkLabel}<Icon name="right" size={16} /></Link>}
+      {to && <Link to={to} className="fw-semibold text-nowrap d-inline-flex align-items-center gap-1" style={{ minHeight: 44 }}>{linkLabel}<Icon name="right" size={16} /></Link>}
     </div>
   )
 }

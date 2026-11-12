@@ -24,13 +24,13 @@ export default function Cart() {
             {items.map((i) => (
               <div key={i.productId} className="vt-line">
                 <Link to={`/shop/${i.productId}`} className="vt-line-img" aria-hidden="true" tabIndex={-1}><img src={i.image} alt="" width="176" height="176" loading="lazy" /></Link>
-                <div className="d-flex flex-column gap-2">
+                <div className="d-flex flex-column gap-2 min-w-0">
                   <div className="d-flex justify-content-between gap-2">
-                    <Link to={`/shop/${i.productId}`} className="fw-semibold text-body text-decoration-none">{i.name}</Link>
+                    <Link to={`/shop/${i.productId}`} className="fw-semibold text-body text-decoration-none text-break">{i.name}</Link>
                     <span className="vt-price flex-none">{gbp(Math.round(i.price * 100) * i.qty / 100)}</span>
                   </div>
                   <span className="small text-secondary">{gbp(i.price)} each</span>
-                  <div className="d-flex align-items-center justify-content-between">
+                  <div className="d-flex flex-wrap align-items-center justify-content-between gap-1">
                     <QtyStepper value={i.qty} max={Math.max(1, i.stock)} onChange={(n) => setQty(i.productId, n)} label={`Quantity of ${i.name}`} />
                     <button type="button" className="btn btn-link text-danger d-inline-flex align-items-center gap-1 px-2" onClick={() => remove(i.productId)} aria-label={`Remove ${i.name}`}>
                       <Icon name="trash" size={18} />Remove
@@ -53,8 +53,8 @@ export default function Cart() {
       <div className="d-md-none" style={{ height: '4.5rem' }} aria-hidden="true" />
       <div className="vt-bar d-lg-none" role="region" aria-label="Checkout">
         <div className="container d-flex align-items-center gap-3">
-          <div className="lh-sm"><small className="text-secondary d-block">Total</small><span className="vt-price" style={{ fontSize: '1.3rem' }}>{gbp(total)}</span></div>
-          <Link to="/checkout" className="btn btn-primary btn-lg ms-auto flex-grow-1">Checkout<Icon name="arrow" size={20} /></Link>
+          <div className="lh-sm flex-none"><small className="text-secondary d-block">Total</small><span className="vt-price" style={{ fontSize: '1.3rem' }}>{gbp(total)}</span></div>
+          <Link to="/checkout" className="btn btn-primary btn-lg ms-auto flex-grow-1 min-w-0">Checkout<Icon name="arrow" size={20} /></Link>
         </div>
       </div>
     </>
