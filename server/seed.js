@@ -17,8 +17,8 @@ export async function seedStarter(db = pool) {
   const branches = {}
   for (const b of load('branches')) {
     const { rows } = await db.query(
-      'INSERT INTO branches (name, area, address, postcode, lat, lng) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id',
-      [b.name, b.area, b.address, b.postcode, b.lat, b.lng])
+      'INSERT INTO branches (name, area, address, postcode, lat, lng, ip) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id',
+      [b.name, b.area, b.address, b.postcode, b.lat, b.lng, b.area === 'Belvedere' ? '127.0.0.1' : null]) // demo: this computer is the Belvedere shop
     branches[b.area] = rows[0].id
   }
   for (const s of load('services')) {
@@ -67,7 +67,7 @@ export async function seedDemo({ force = false } = {}) {
   const ids = {}
   for (const u of [
     { name: 'Demo Customer', email: 'customer@demo.com', role: 'customer' },
-    { name: 'Demo Staff', role: 'staff', branchId: branches.Belvedere, pin: '1234', dailyWage: 80, noPassword: true },
+    { name: 'Demo Staff', role: 'staff', branchId: branches.Belvedere, pin: '1234', dailyWage: 80, staffRole: 'Biller', noPassword: true },
     { name: 'Demo Admin', email: 'admin@demo.com', role: 'admin' },
   ]) ids[u.role] = (await createUser({ ...u, password: u.noPassword ? null : 'Password123!' })).id
   await seedVapesDemo(pool, branches, ids.customer)

@@ -1,3 +1,4 @@
+import { signInAtBranch } from '../utils/branchByIp.js'
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { body, validationResult } from 'express-validator'
@@ -60,8 +61,9 @@ router.post('/pin-login', pinLimiter, wrap(async (req, res) => {
   const { rows } = await query("SELECT * FROM users WHERE pin = $1 AND role = 'staff'", [pin])
   const user = rows[0]
   if (!user || !user.active) throw fail(401, 'Wrong PIN')
-  setCookie(res, user)
-  res.json(toPublic(user))
+  const here = await signInAtBranch(req, user)
+  setCookie(res, here)
+  res.json(toPublic(here))
 }))
 
 router.post('/logout', (req, res) => {

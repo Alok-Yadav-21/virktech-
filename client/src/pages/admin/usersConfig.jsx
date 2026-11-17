@@ -1,4 +1,5 @@
 import { gbp } from '../../format'
+import { STAFF_ROLES } from '../../constants'
 
 const active = { key: 'active', label: 'Active', render: (r) => <span className={`badge ${r.active ? 'bg-success' : 'bg-secondary'}`}>{r.active ? 'Yes' : 'No'}</span> }
 const password = { name: 'password', label: 'Password', type: 'password', hint: 'At least 8 characters. When editing, leave blank to keep the current one.' }
@@ -6,19 +7,20 @@ const password = { name: 'password', label: 'Password', type: 'password', hint: 
 // Export names double as the /admin/<name> route paths. "Delete" switches the account off, since
 // users are referenced by repairs, orders and points.
 export const staff = {
-  title: 'Staff', noun: 'Staff member', url: '/users', query: 'role=staff', deleteVerb: 'Deactivate', searchable: true,
+  title: 'Staff', noun: 'Staff member', url: '/users', query: 'role=staff&active=1', deleteVerb: 'Delete', searchable: true,
   defaults: { role: 'staff', active: true },
   columns: [
-    { key: 'name', label: 'Name' }, { key: 'phone', label: 'Phone' }, { key: 'pin', label: 'PIN' },
+    { key: 'name', label: 'Name' }, { key: 'staffRole', label: 'Role', render: (r) => r.staffRole || '-' }, { key: 'phone', label: 'Phone' }, { key: 'pin', label: 'PIN' },
     { key: 'dailyWage', label: 'Wage / day', render: (r) => (r.dailyWage == null ? '-' : `${gbp(r.dailyWage)}/day`) },
-    { key: 'branchName', label: 'Branch' }, active,
+    { key: 'branchName', label: 'Working at', render: (r) => r.branchName || 'Not signed in yet' },
+    { key: 'lastLoginAt', label: 'Last sign-in', render: (r) => (r.lastLoginAt ? new Date(r.lastLoginAt).toLocaleString('en-GB') : '-') }, active,
   ],
   fields: [
     { name: 'name', label: 'Name', required: true },
+    { name: 'staffRole', label: 'Role', type: 'choice', choices: ['', ...STAFF_ROLES], hint: 'What they do in the shop, so you can tell staff apart.' },
     { name: 'phone', label: 'Phone' },
     { name: 'pin', label: 'PIN', required: true, hint: '4 digits, different for every staff member. They use it alone to sign in at /staff-login.' },
     { name: 'dailyWage', label: 'Daily wage (£ per day worked)', type: 'number', hint: 'Paid once for every day they work, however many hours.' },
-    { name: 'branchId', label: 'Branch', type: 'select', optionsFrom: '/branches', optionLabel: 'area', required: true },
     { name: 'active', label: 'Active', type: 'checkbox' },
   ],
 }

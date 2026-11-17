@@ -1,6 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
+import { atPinBranch } from './test/atBranch.js'
 import { createUser } from './utils/users.js'
 import pool, { query } from './db.js'
 
@@ -23,9 +24,11 @@ beforeAll(async () => {
   demo = (await query("SELECT id FROM users WHERE pin = '1234'")).rows[0].id
   await query('DELETE FROM shifts WHERE user_id = $1', [demo])
   as.staff = request.agent(app)
+  await atPinBranch('1234')
   expect((await as.staff.post('/api/till/login').send({ pin: '1234' })).status).toBe(200)
   expect((await as.staff.post('/api/till/shift/start')).status).toBe(201)
   as.dash = request.agent(app)
+  await atPinBranch('1234')
   expect((await as.dash.post('/api/auth/pin-login').send({ pin: '1234' })).status).toBe(200)
   for (const [k, email] of [['admin', 'admin@demo.com'], ['customer', 'customer@demo.com']]) {
     as[k] = request.agent(app)
@@ -140,6 +143,7 @@ test('the walk-in account cannot log in and is not listed as a customer', async 
 
 const tillAs = async (pin) => {
   const agent = request.agent(app)
+  await atPinBranch(pin)
   expect((await agent.post('/api/till/login').send({ pin })).status).toBe(200)
   return agent
 }
@@ -154,6 +158,7 @@ test('the till and the dashboard are separate sign-ins', async () => {
   expect((await as.dash.get('/api/shifts')).status, 'staff never see hours or wages').toBe(403)
   expect((await as.admin.get('/api/shifts')).status).toBe(200)
   // PIN rules: wrong PIN, and only staff PINs.
+  await atPinBranch('0000')
   expect((await request(app).post('/api/till/login').send({ pin: '0000' })).status).toBe(401)
   expect((await request(app).post('/api/till/login').send({})).status).toBe(401)
   const me = (await as.staff.get('/api/till/me')).body
@@ -202,4 +207,49 @@ test('a sale needs the seller on shift, and admin can see who is working', async
   expect(now.some((n) => n.name === 'Till Mate'), 'ended shifts are not listed').toBe(false)
   expect((await as.dash.get('/api/shifts/now')).status).toBe(403)
   expect((await as.customer.get('/api/shifts/now')).status).toBe(403)
+})
+
+test('sign-in cookies are session cookies, so closing the browser signs out', async () => {
+  await atPinBranch('1234')
+  const till = await request(app).post('/api/till/login').send({ pin: '1234' })
+  const dash = await request(app).post('/api/auth/login').send({ email: 'customer@demo.com', password: PW })
+  for (const r of [till, dash]) {
+    const c = r.headers['set-cookie'].join(';')
+    expect(c).not.toMatch(/Max-Age|Expires/i)
+  }
+})
+
+test('admin sets a staff role; deleting staff hides them and frees the PIN', async () => {
+  const b = (await as.admin.get('/api/branches')).body[0].id
+  const bad = await as.admin.post('/api/users').send({ name: 'Role Test', pin: '9191', role: 'staff', branchId: b, staffRole: 'Wizard' })
+  expect(bad.status).toBe(400)
+  const made = await as.admin.post('/api/users').send({ name: 'Role Test', pin: '9191', role: 'staff', branchId: b, staffRole: 'Repairer' })
+  expect(made.body.staffRole).toBe('Repairer')
+  expect((await as.admin.put(`/api/users/${made.body.id}`).send({ staffRole: 'Manager' })).body.staffRole).toBe('Manager')
+  expect((await as.admin.delete(`/api/users/${made.body.id}`)).status).toBe(200)
+  const list = (await as.admin.get('/api/users?role=staff&active=1&limit=100')).body
+  expect(list.some((u) => u.id === made.body.id)).toBe(false)
+  await atPinBranch('9191')
+  expect((await request(app).post('/api/till/login').send({ pin: '9191' })).status, 'deleted staff cannot sign in').toBe(401)
+  expect((await as.admin.post('/api/users').send({ name: 'Reuse', pin: '9191', role: 'staff', branchId: b })).status, 'PIN is free again').toBe(201)
+})
+
+test('staff are placed at the branch whose IP they sign in from; unknown IPs are refused', async () => {
+  const [a, b] = (await as.admin.get('/api/branches?all=1')).body
+  const mate = (await query("SELECT id FROM users WHERE pin = '7771'")).rows[0].id
+  await query("UPDATE users SET branch_id = NULL WHERE id = $1", [mate])
+  await query('UPDATE branches SET ip = NULL')
+  expect((await request(app).post('/api/till/login').send({ pin: '7771' })).status, 'no branch has this IP').toBe(403)
+  expect((await request(app).post('/api/auth/pin-login').send({ pin: '7771' })).status).toBe(403)
+  expect((await as.admin.put(`/api/branches/${b.id}`).send({ ip: 'not an ip' })).status).toBe(400)
+  expect((await as.admin.get('/api/branches/my-ip')).body.ip).toBe('127.0.0.1')
+  expect((await as.admin.put(`/api/branches/${b.id}`).send({ ip: '127.0.0.1' })).body.ip).toBe('127.0.0.1')
+  expect((await as.admin.put(`/api/branches/${a.id}`).send({ ip: '127.0.0.1' })).status, 'one IP, one branch').toBe(409)
+  expect((await request(app).post('/api/till/login').send({ pin: '7771' })).body.branchId).toBe(b.id)
+  const row = (await as.admin.get('/api/users?role=staff&q=Till Mate')).body[0]
+  expect(row.branchName).toBe(b.area)
+  expect(row.lastLoginAt).toBeTruthy()
+  expect((await request(app).get('/api/branches')).body.every((x) => !('ip' in x)), 'IP is admin-only').toBe(true)
+  await query('UPDATE branches SET ip = NULL')
+  await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [a.id]) // back to the seed state
 })

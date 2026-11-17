@@ -1,6 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
+import { atPinBranch } from './test/atBranch.js'
 import pool, { query } from './db.js'
 
 // End-to-end business flows against the (test) database, as each role would drive them.
@@ -16,6 +17,7 @@ const login = async (email, password = PW) => {
 }
 const loginPin = async (pin) => {
   const agent = request.agent(app)
+  await atPinBranch(pin)
   const r = await agent.post('/api/auth/pin-login').send({ pin })
   expect(r.status, `pin login ${pin}`).toBe(200)
   return agent
@@ -40,6 +42,7 @@ beforeAll(async () => {
 
   const staff = await as.admin.post('/api/users').send({ name: 'Flows Sidcup', pin: '9002', dailyWage: 11, role: 'staff', branchId: sid })
   expect(staff.status).toBe(201)
+  await query('UPDATE users SET branch_id = $1 WHERE id = $2', [sid, staff.body.id]) // the API no longer takes a branch; sign-in sets it
   as.sidcup = await loginPin('9002')
   as.other = request.agent(app)
   expect((await as.other.post('/api/auth/register').send({ name: 'Flows Other', email: 'flows-other@test.local', password: PW })).status).toBe(201)
@@ -371,7 +374,6 @@ test('lists page, search and report the total in X-Total-Count', async () => {
 // ---------------------------------------------------------------- admin user management
 test('admin manages staff and customers; resets and deactivation take effect immediately', async () => {
   expect((await as.staff.get('/api/users')).status).toBe(403)
-  expect((await as.admin.post('/api/users').send({ name: 'S', pin: '9003', role: 'staff' })).status, 'staff need a branch').toBe(400)
   expect((await as.admin.post('/api/users').send({ name: 'S', email: 'x@test.local', password: PW, role: 'admin' })).status, 'no admins via the API').toBe(400)
   expect((await as.admin.post('/api/users').send({ name: 'S', email: 'x@test.local', password: 'short', role: 'customer' })).status).toBe(400)
   expect((await as.admin.post('/api/users').send({ name: 'D', email: 'flows-other@test.local', password: PW, role: 'customer' })).status).toBe(409)
@@ -394,16 +396,19 @@ test('admin manages staff and customers; resets and deactivation take effect imm
 
   expect((await as.admin.put(`/api/users/${id}`).send({ pin: '9003' })).status).toBe(200)
   expect((await as.sidcup.get('/api/auth/me')).status, 'a new PIN ends the old session').toBe(401)
+  await atPinBranch('9002')
   expect((await request(app).post('/api/auth/pin-login').send({ pin: '9002' })).status, 'old PIN').toBe(401)
   as.sidcup = await loginPin('9003')
   expect((await request(app).post('/api/auth/login').send({ email: 'x@test.local', password: PW })).status, 'staff have no password').toBe(401)
 
   expect((await as.admin.delete(`/api/users/${id}`)).status).toBe(200)
   expect((await as.sidcup.get('/api/auth/me')).status, 'deactivated: locked out at once').toBe(401)
+  await atPinBranch('9003')
   expect((await request(app).post('/api/auth/pin-login').send({ pin: '9003' })).status).toBe(401)
   expect((await as.admin.put(`/api/users/${id}`).send({ active: true })).body.active).toBe(true)
   // a customer can never sign in with a PIN, even one that matches
   await query("UPDATE users SET pin = '5555' WHERE email = 'customer@demo.com'")
+  await atPinBranch('5555')
   expect((await request(app).post('/api/auth/pin-login').send({ pin: '5555' })).status, 'customer PIN is ignored').toBe(401)
   await query("UPDATE users SET pin = NULL WHERE email = 'customer@demo.com'")
 
@@ -418,6 +423,5 @@ test('the database itself refuses impossible data', async () => {
   expect(await bad("UPDATE repairs SET status = 'Teleported' WHERE id = (SELECT min(id) FROM repairs)")).toBe('23514')
   expect(await bad("UPDATE orders SET status = 'Teleported' WHERE id = (SELECT min(id) FROM orders)")).toBe('23514')
   expect(await bad('UPDATE branch_stock SET stock = -1 WHERE ctid = (SELECT ctid FROM branch_stock LIMIT 1)')).toBe('23514')
-  expect(await bad("INSERT INTO users (name, email, password, role) VALUES ('s', 'nobranch@test.local', 'x', 'staff')")).toBe('23514')
   expect(await bad("INSERT INTO users (name, email, password) VALUES ('s', 'UPPER@test.local', 'x')")).toBe('23514')
 })

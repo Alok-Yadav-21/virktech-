@@ -4,21 +4,23 @@ import toast from 'react-hot-toast'
 import api from '../../api'
 import useFetch from '../../hooks/useFetch'
 import { ErrorState } from '../../components/ui/primitives'
+import PinPad from '../../components/PinPad'
 
-// Clock in or out from the till: anyone at this branch types their own PIN. Names and "on shift" only, never times or pay.
-export default function TillCrew({ onHide, onChanged }) {
+// Clock in or out from the till: anyone at this branch taps their own PIN. Names and "on shift" only, never times or pay.
+export default function TillCrew({ me, onHide, onChanged }) {
   const { data, error, reload } = useFetch('/till/crew')
-  const [pin, setPin] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const clock = async (action) => {
+  // No Start/End buttons: the server flips it, so typing your PIN starts your shift when you are off and ends it when you are on.
+  const clock = async (pin) => {
     setBusy(true)
     try {
-      const r = await api.post('/till/clock', { pin, action })
-      toast.success(`${r.data.name}: shift ${action === 'start' ? 'started' : 'ended'}`)
+      const r = await api.post('/till/clock', { pin, action: 'toggle' })
+      toast.success(`${r.data.name}: shift ${r.data.action === 'start' ? 'started' : 'ended'}`)
+      if (r.data.holder.id !== me.id) toast(`The till is now under ${r.data.holder.name}`)
       reload()
       onChanged()
-    } catch { /* api.js already toasted why */ } finally { setPin(''); setBusy(false) }
+    } catch { /* api.js already toasted why */ } finally { setBusy(false) }
   }
 
   return (
@@ -32,13 +34,8 @@ export default function TillCrew({ onHide, onChanged }) {
             <span className={`badge ${c.onShift ? 'bg-success' : 'bg-secondary'}`}>{c.onShift ? 'On shift' : 'Off'}</span>
           </div>
         ))}
-        <label className="form-label mt-3" htmlFor="clock-pin">Type your PIN to start or end your own shift</label>
-        <input id="clock-pin" className="form-control form-control-lg text-center mb-3" style={{ letterSpacing: '1rem' }} type="password" inputMode="numeric"
-          autoComplete="off" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} />
-        <div className="d-grid gap-2 d-sm-flex">
-          <button className="btn btn-primary btn-lg flex-fill" disabled={busy || pin.length < 4} onClick={() => clock('start')}>Start shift</button>
-          <button className="btn btn-outline-danger btn-lg flex-fill" disabled={busy || pin.length < 4} onClick={() => clock('end')}>End shift</button>
-        </div>
+        <p className="mt-3 mb-3 text-center fw-semibold">Tap your PIN to start or end your own shift</p>
+        <PinPad onComplete={clock} disabled={busy} />
       </Modal.Body>
     </Modal>
   )

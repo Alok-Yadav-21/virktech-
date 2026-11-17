@@ -40,7 +40,7 @@ export default function Login() {
         <button className="btn btn-primary btn-lg" disabled={busy}>{busy ? 'Logging in…' : 'Log in'}</button>
       </form>
       <hr className="my-3" />
-      <Link to="/till" className="btn btn-outline-secondary w-100"><Icon name="receipt" size={20} />Open the till (staff)</Link>
+      <Link to="/till" className="btn btn-outline-secondary w-100"><Icon name="receipt" size={20} />Staff login</Link>
     </AuthShell>
   )
 }

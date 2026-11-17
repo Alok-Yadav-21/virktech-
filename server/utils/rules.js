@@ -1,5 +1,6 @@
 // Single source for business rules. Status vocabulary mirrored in client/src/constants.js.
 export const ROLES = ['customer', 'staff', 'admin']
+export const STAFF_ROLES = ['Shopkeeper', 'Manager', 'Biller', 'Repairer'] // a staff member's job, admin-set, for telling people apart
 
 // ---- Repairs ---------------------------------------------------------------------------
 export const REPAIR_STATUS = {

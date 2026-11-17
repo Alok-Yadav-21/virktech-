@@ -11,11 +11,11 @@ export const DUMMY_HASH = bcrypt.hashSync('not-a-real-password', 12)
 
 // The one place a user row gets written with a password.
 // Staff have a PIN and a wage instead of an email and password.
-export async function createUser({ name, email = null, password = null, phone = null, role = 'customer', branchId = null, pin = null, dailyWage = null }) {
+export async function createUser({ name, email = null, password = null, phone = null, role = 'customer', branchId = null, pin = null, dailyWage = null, staffRole = null }) {
   const { rows } = await query(
-    `INSERT INTO users (name, email, password, phone, role, branch_id, pin, daily_wage)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [name, email, password && await hashPassword(password), phone, role, branchId, pin, dailyWage],
+    `INSERT INTO users (name, email, password, phone, role, branch_id, pin, daily_wage, staff_role)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+    [name, email, password && await hashPassword(password), phone, role, branchId, pin, dailyWage, staffRole],
   )
   return rows[0]
 }

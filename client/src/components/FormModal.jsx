@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Modal } from 'react-bootstrap'
+import api from '../api'
 
 // fields: [{ name, label, type: text|password|number|textarea|select|choice|checkbox, options?, choices?, required? }]
 // Parent sets `key` per record so state resets between Add and Edit.
@@ -34,6 +35,16 @@ export default function FormModal({ title, fields, initial, onSubmit, onHide }) 
         <select {...common} className="form-select" value={v} onChange={(e) => set(f.name, e.target.value)}>
           {f.choices.map((c) => <option key={c}>{c}</option>)}
         </select>
+      )
+    }
+    if (f.type === 'ip') { // text box + a button that fills in this computer's public IP (the admin is sitting in the shop)
+      return (
+        <div className="input-group">
+          <input {...common} type="text" className="form-control" value={v} onChange={(e) => set(f.name, e.target.value)} />
+          <button type="button" className="btn btn-outline-secondary" onClick={async () => {
+            try { set(f.name, (await api.get('/branches/my-ip')).data.ip) } catch { /* api.js already toasted */ }
+          }}>Use this computer&apos;s IP</button>
+        </div>
       )
     }
     if (f.type === 'number') {

@@ -5,6 +5,7 @@ import useFetch from '../../hooks/useFetch'
 import useDebounce from '../../hooks/useDebounce'
 import useIdleLogout from '../../hooks/useIdleLogout'
 import { Chip, EmptyState, ErrorState } from '../../components/ui/primitives'
+import PinPad from '../../components/PinPad'
 import TillCrew from './TillCrew'
 import TillLogin from './TillLogin'
 import TillPay from './TillPay'
@@ -29,8 +30,8 @@ export default function Till() {
     window.close()
     window.location.assign('/')
   }
-  // Nobody touching the till for 10 minutes: sign out so the next person at the counter has to type their own PIN.
-  useIdleLogout(() => logOut().then(() => toast('Logged out after 10 minutes of inactivity')), !!me)
+  // Nobody touching the till for 3 hours: sign out so the next person at the counter has to type their own PIN.
+  useIdleLogout(() => logOut().then(() => toast('Logged out after 3 hours of inactivity')), !!me, 3 * 60 * 60 * 1000)
 
   if (me === undefined) return <div className="text-center py-5"><div className="spinner-border" /></div>
   if (!me) return <TillLogin onSignedIn={loadMe} />
@@ -89,21 +90,21 @@ function Counter({ me, reloadMe, onLogOut, onClose }) {
       {crew.data?.filter((c) => c.onShift).map((c) => <span key={c.id} className="badge bg-success">{c.name}</span>)}
     </span>
   )
-  const startMine = () => api.post('/till/shift/start').then(changed).catch(() => { /* api.js already toasted */ })
+  // Locked screen: whoever taps their PIN starts their shift; the server hands the till to them.
+  const startWithPin = (pin) => api.post('/till/clock', { pin, action: 'start' }).then(changed).catch(() => { /* api.js already toasted */ })
 
   if (!me.onShift) {
     return (
       <div className="container py-5" style={{ maxWidth: 520 }}>
         <h1 className="h3 mb-1">Till</h1>
-        <p className="text-secondary">{me.name}, you are not on shift. Start your shift to sell.</p>
-        {working}
-        <div className="d-grid gap-2">
-          <button className="btn btn-primary btn-lg" onClick={startMine}>Start my shift</button>
+        <p className="text-secondary">Nobody is on shift. Tap your PIN to start yours and open the till.</p>
+        <PinPad onComplete={startWithPin} />
+        <div className="d-grid gap-2 mt-4">
           <button className="btn btn-outline-secondary" onClick={() => setShowCrew(true)}>Shifts</button>
           <button className="btn btn-outline-secondary" onClick={onLogOut}>Log out</button>
           <button className="btn btn-outline-secondary" onClick={onClose}>Close till</button>
         </div>
-        {showCrew && <TillCrew onHide={() => setShowCrew(false)} onChanged={changed} />}
+        {showCrew && <TillCrew me={me} onHide={() => setShowCrew(false)} onChanged={changed} />}
       </div>
     )
   }
@@ -178,7 +179,7 @@ function Counter({ me, reloadMe, onLogOut, onClose }) {
           onDone={() => { setPaying(false); setBasket([]); items.reload() }} />
       )}
       {showToday && <TillToday onHide={() => setShowToday(false)} onVoided={items.reload} />}
-      {showCrew && <TillCrew onHide={() => setShowCrew(false)} onChanged={changed} />}
+      {showCrew && <TillCrew me={me} onHide={() => setShowCrew(false)} onChanged={changed} />}
     </div>
   )
 }

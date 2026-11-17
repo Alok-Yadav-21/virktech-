@@ -2,6 +2,8 @@ import { query } from '../db.js'
 import crud from './crud.js'
 import { byDistance } from '../utils/geo.js'
 import { fail, wrap } from '../utils/validate.js'
+import { protect, requireRole } from '../middleware/auth.js'
+import { checkIp, cleanIp } from '../utils/branchByIp.js'
 
 export const categories = crud({
   table: 'categories', fields: { name: 'name' }, required: ['name'], order: 't.name',
@@ -40,10 +42,15 @@ export const branches = crud({
     name: 'name', area: 'area', address: 'address', postcode: 'postcode',
     lat: 'lat', lng: 'lng', phone: 'phone', active: 'active',
   },
+  adminFields: { ip: 'ip' }, // the shop's public IP; staff sign-in uses it to find their branch
   // Admin list only: who works here (names, not PINs).
   adminExtra: `, COALESCE((SELECT json_agg(u.name ORDER BY u.name) FROM users u WHERE u.branch_id = t.id AND u.role = 'staff' AND u.active), '[]'::json) AS staff`,
   // Must be registered before /:id. postcodes.io needs no API key.
-  setup: (router) => router.get('/nearest', wrap(async (req, res) => {
+  setup: (router) => {
+    router.use((req, res, next) => { try { if (req.body && 'ip' in req.body) req.body.ip = checkIp(req.body.ip); next() } catch (e) { next(e) } })
+    // The address of the computer asking, for the "Use this computer's IP" button.
+    router.get('/my-ip', protect, requireRole('admin'), (req, res) => res.json({ ip: cleanIp(req.ip) }))
+    router.get('/nearest', wrap(async (req, res) => {
     const postcode = String(req.query.postcode || '').trim().slice(0, 12)
     if (!postcode) throw fail(400, 'postcode is required')
     let r
@@ -55,5 +62,6 @@ export const branches = crud({
     const { latitude: lat, longitude: lng } = (await r.json()).result
     const { rows } = await query('SELECT id, name, area, address, postcode, lat, lng, phone FROM branches WHERE active = true')
     res.json({ origin: { lat, lng }, branches: byDistance(rows, { lat, lng }) })
-  })),
+    }))
+  },
 })

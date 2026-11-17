@@ -63,6 +63,7 @@ export const branches = {
     { key: 'address', label: 'Address' },
     { key: 'postcode', label: 'Postcode' },
     { key: 'phone', label: 'Phone' },
+    { key: 'ip', label: 'Shop IP', render: (r) => r.ip || 'Not set' },
     { key: 'staff', label: 'Staff working here', render: (r) => (r.staff?.length ? r.staff.join(', ') : '-') },
     active,
   ],
@@ -72,6 +73,7 @@ export const branches = {
     { name: 'address', label: 'Address' },
     { name: 'postcode', label: 'Postcode' },
     { name: 'phone', label: 'Phone' },
+    { name: 'ip', label: 'Shop internet IP', type: 'ip', hint: 'Staff signing in from this IP are placed at this branch. Open this form on a computer in the shop and press the button. Needs a fixed IP from the internet provider.' },
     activeField,
   ],
 }

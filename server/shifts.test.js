@@ -1,6 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
+import { atPinBranch } from './test/atBranch.js'
 import pool, { query } from './db.js'
 import { createUser } from './utils/users.js'
 
@@ -13,6 +14,7 @@ let blv, sid, idA, idB
 
 const loginPin = async (pin) => {
   const agent = request.agent(app)
+  await atPinBranch(pin)
   expect((await agent.post('/api/auth/pin-login').send({ pin })).status).toBe(200)
   return agent
 }
@@ -36,6 +38,7 @@ beforeAll(async () => {
   as.b = await loginPin(PINS.b)
   for (const w of ['a', 'b']) {
     till[w] = request.agent(app)
+    await atPinBranch(PINS[w])
     expect((await till[w].post('/api/till/login').send({ pin: PINS[w] })).status).toBe(200)
   }
   as.admin = request.agent(app)
@@ -58,6 +61,9 @@ test('start, one at a time, end', async () => {
   expect((await clock('a', PINS.a, 'start')).status, 'second start').toBe(409)
 
   expect((await clock('a', PINS.a, 'end')).status).toBe(200)
+  const t1 = await clock('a', PINS.a, 'toggle')
+  expect(t1.body.action, 'toggle starts when off').toBe('start')
+  expect((await clock('a', PINS.a, 'toggle')).body.action, 'toggle ends when on').toBe('end')
   expect(await current('a')).toBeNull()
   expect((await clock('a', PINS.a, 'end')).status, 'already ended').toBe(409)
 })
@@ -124,4 +130,24 @@ test('a day pays the rate stored on the shift, and admin can fix a forgotten end
 test('a deactivated staff member is locked out at once', async () => {
   await query('UPDATE users SET active = false WHERE id = $1', [idB])
   expect((await clock('b', PINS.b, 'start')).status).toBe(401)
+})
+
+test('the till stays open for the people still on shift when the first one leaves', async () => {
+  const c = await createUser({ name: 'Shift C', role: 'staff', branchId: blv, pin: '7782', dailyWage: 10 })
+  try {
+    expect((await clock('a', PINS.a, 'start')).status).toBe(200)
+    expect((await clock('a', '7782', 'start')).body.holder.name, 'holder still on shift').toBe('Shift A')
+    const left = await clock('a', PINS.a, 'end') // the person who opened the till leaves first
+    expect(left.body.holder.name, 'till passes to the one still working').toBe('Shift C')
+    const me = await till.a.get('/api/till/me') // same cookie jar, no new sign-in
+    expect(me.body).toMatchObject({ name: 'Shift C', onShift: true })
+    const last = await clock('a', '7782', 'end')
+    expect(last.status).toBe(200)
+    expect((await till.a.get('/api/till/me')).body.onShift, 'nobody on shift: locked').toBe(false)
+    expect((await clock('a', PINS.a, 'start')).body.holder.name, 'a new start takes the till').toBe('Shift A')
+    expect((await till.a.get('/api/till/me')).body).toMatchObject({ name: 'Shift A', onShift: true })
+  } finally {
+    await query('DELETE FROM shifts WHERE user_id = ANY($1)', [[c.id, idA]])
+    await query('DELETE FROM users WHERE id = $1', [c.id])
+  }
 })

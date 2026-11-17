@@ -1,6 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
+import { atPinBranch } from './test/atBranch.js'
 import pool, { query } from './db.js'
 import { createUser } from './utils/users.js'
 
@@ -16,6 +17,7 @@ const extra = []
 const stockOf = async (table, branch, id) => (await query(`SELECT COALESCE(max(stock), 0)::int AS n FROM ${table} WHERE branch_id = $1 AND product_id = $2`, [branch, id])).rows[0].n
 const dash = async (pin) => {
   const agent = request.agent(app)
+  await atPinBranch(pin)
   expect((await agent.post('/api/auth/pin-login').send({ pin })).status).toBe(200)
   return agent
 }
@@ -45,6 +47,7 @@ beforeAll(async () => {
   extra.push((await createUser({ name: 'TB Sidcup', role: 'staff', branchId: sid, pin: PINS.sidcup })).id)
   as.sidcup = await dash(PINS.sidcup)
   as.till = request.agent(app)
+  await atPinBranch('1234')
   expect((await as.till.post('/api/till/login').send({ pin: '1234' })).status).toBe(200)
   as.customer = request.agent(app)
   expect((await as.customer.post('/api/auth/login').send({ email: 'customer@demo.com', password: PW })).status).toBe(200)

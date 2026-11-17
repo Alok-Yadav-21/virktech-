@@ -1,3 +1,4 @@
+import { signInAtBranch } from '../utils/branchByIp.js'
 import { Router } from 'express'
 import jwt from 'jsonwebtoken'
 import { query, tx } from '../db.js'
@@ -23,15 +24,19 @@ const staffByPin = async (pin) => {
   const { rows } = await query("SELECT * FROM users WHERE pin = $1 AND role = 'staff' AND active", [String(pin ?? '')])
   return rows[0]
 }
+// pv ties the token to the account's last PIN/password change, as the dashboard cookie does.
+const setTillCookie = (res, user) => {
+  const token = jwt.sign({ id: user.id, pv: user.password_changed_at?.getTime() ?? 0 }, process.env.JWT_SECRET, { expiresIn: '12h' })
+  res.cookie('till_token', token, TILL_COOKIE) // session cookie: the browser closing signs the till out
+}
 const who = (u) => ({ id: u.id, name: u.name, branchId: u.branch_id })
 
 router.post('/login', pinLimiter, wrap(async (req, res) => {
   const user = await staffByPin(req.body.pin)
   if (!user) throw fail(401, 'Wrong PIN')
-  // pv ties the token to the account's last PIN/password change, as the dashboard cookie does.
-  const token = jwt.sign({ id: user.id, pv: user.password_changed_at?.getTime() ?? 0 }, process.env.JWT_SECRET, { expiresIn: '12h' })
-  res.cookie('till_token', token, { ...TILL_COOKIE, maxAge: 12 * 3600 * 1000 })
-  res.json(who(user))
+  const here = await signInAtBranch(req, user)
+  setTillCookie(res, here)
+  res.json(who(here))
 }))
 
 router.post('/logout', (req, res) => {
@@ -64,12 +69,24 @@ router.post('/shift/end', wrap(async (req, res) => { await endShift(req.user.id)
 
 // Clock someone in or out with their own PIN, from this till. Only people from this branch.
 router.post('/clock', pinLimiter, wrap(async (req, res) => {
-  if (!['start', 'end'].includes(req.body.action)) throw fail(400, 'Choose start or end')
+  if (!['start', 'end', 'toggle'].includes(req.body.action)) throw fail(400, 'Choose start or end')
   const person = await staffByPin(req.body.pin)
   if (!person) throw fail(401, 'Wrong PIN')
   if (person.branch_id !== req.user.branch_id) throw fail(403, 'That person works at another branch')
-  await (req.body.action === 'start' ? startShift(person) : endShift(person.id))
-  res.json({ name: person.name, action: req.body.action })
+  let action = req.body.action
+  if (action === 'toggle') { // the keypad has no Start/End buttons: on shift means end, otherwise start
+    action = (await query('SELECT 1 FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [person.id])).rowCount ? 'end' : 'start'
+  }
+  await (action === 'start' ? startShift(person) : endShift(person.id))
+  // The till stays open while anyone is on shift: if the person holding it just left, it passes to the one who has been on longest.
+  let holder = req.user
+  if (!(await query('SELECT 1 FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [holder.id])).rowCount) {
+    const { rows: [next] } = await query(
+      `SELECT u.* FROM shifts s JOIN users u ON u.id = s.user_id
+       WHERE s.ended_at IS NULL AND s.branch_id = $1 AND u.active ORDER BY s.started_at LIMIT 1`, [req.user.branch_id])
+    if (next) { setTillCookie(res, next); holder = next }
+  }
+  res.json({ name: person.name, action, holder: { id: holder.id, name: holder.name } })
 }))
 
 const KINDS = ['electronics', 'vape']
