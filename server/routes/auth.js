@@ -63,7 +63,7 @@ router.post('/pin-login', pinLimiter, wrap(async (req, res) => {
   const user = rows[0]
   if (!user || !user.active) throw fail(401, 'Wrong PIN')
   assertNoOtherLogin(req, user) // before the IP step, so a refused attempt records nothing
-  const here = await signInAtBranch(req, user)
+  const here = await signInAtBranch(req, user, req.body.branchId)
   setCookie(res, here, await claimLogin(user))
   res.json(toPublic(here))
 }))

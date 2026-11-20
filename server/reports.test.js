@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch } from './test/atBranch.js'
+import { branchOf, atPinBranch } from './test/atBranch.js'
 import pool, { query } from './db.js'
 
 // Admin revenue/profit report: figures per branch and combined, kept apart per range, admin only.
@@ -31,7 +31,7 @@ beforeAll(async () => {
   as.customer = await login('customer@demo.com')
   as.staff = request.agent(app)
   await atPinBranch('123456')
-  expect((await as.staff.post('/api/auth/pin-login').send({ pin: '123456' })).status).toBe(200)
+  expect((await as.staff.post('/api/auth/pin-login').send({ pin: '123456', branchId: await branchOf('123456') })).status).toBe(200)
   cust = (await query("SELECT id FROM users WHERE email = 'customer@demo.com'")).rows[0].id
   // A branch of its own, so these figures cannot be disturbed by other test files.
   branch = (await query("INSERT INTO branches (name, area) VALUES ('Test Rep Branch', 'Test Rep Area') RETURNING id")).rows[0].id

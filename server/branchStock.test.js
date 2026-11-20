@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch, tokenOf } from './test/atBranch.js'
+import { branchOf, atPinBranch, tokenOf } from './test/atBranch.js'
 import pool, { query } from './db.js'
 import { createUser } from './utils/users.js'
 
@@ -18,7 +18,7 @@ const stockOf = async (table, branch, id) => (await query(`SELECT COALESCE(max(s
 const dash = async (pin) => {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  const r = await agent.post('/api/auth/pin-login').send({ pin, branchId: await branchOf(pin) })
   expect(r.status).toBe(200)
   agent.tokenValue = tokenOf(r)
   return agent
@@ -51,7 +51,7 @@ beforeAll(async () => {
   // The till on the same computer as the dashboard: one live sign-in held twice (see tokenOf), one cookie per agent.
   as.till = request.agent(app)
   await atPinBranch('123456', { keepLogin: true })
-  expect((await as.till.post('/api/till/login').set('Cookie', `token=${as.staff.tokenValue}`).send({ pin: '123456' })).status).toBe(200)
+  expect((await as.till.post('/api/till/login').set('Cookie', `token=${as.staff.tokenValue}`).send({ pin: '123456', branchId: await branchOf('123456') })).status).toBe(200)
   as.customer = request.agent(app)
   expect((await as.customer.post('/api/auth/login').send({ email: 'customer@demo.com', password: PW })).status).toBe(200)
   as.admin = request.agent(app)

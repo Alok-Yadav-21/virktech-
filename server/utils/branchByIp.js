@@ -31,14 +31,17 @@ export const checkIp = (v) => {
   return ip
 }
 
-// Staff sign-in, from any device. Every sign-in records the IP and the branch it matched, so the admin sees where each
-// person actually signed in (see clientIp for where the IP comes from). A branch's saved IP puts them at that branch; any
-// other IP still signs in but matches no branch (branch_id = NULL, and a NULL branch matches nothing in scope.js, so
-// that session sees no branch data). There is no home branch to fall back on: it is always where they signed in.
-export async function signInAtBranch(req, user) {
+// Staff sign-in, from any device. Nothing is compared with a saved IP: the person says which branch they are working at
+// (without one the answer is 422, which the sign-in screen turns into a branch picker and resubmits), and the sign-in
+// records that branch and the IP it came from (see clientIp) for the admin to read. The branch is always the one picked
+// at this sign-in; there is no home branch and no IP-to-branch matching.
+export async function signInAtBranch(req, user, chosen) {
+  if (chosen == null || chosen === '') throw fail(422, 'Choose the branch you are working at')
+  const branchId = Number(chosen)
+  if (!Number.isInteger(branchId) || !(await query('SELECT 1 FROM branches WHERE id = $1 AND active', [branchId])).rowCount) {
+    throw fail(400, 'Choose one of the listed branches')
+  }
   const ip = clientIp(req)
-  const { rows } = await query('SELECT id FROM branches WHERE ip = $1 AND active', [ip])
-  const branchId = rows[0]?.id ?? null
   await query('UPDATE users SET branch_id = $1, last_ip = $2, last_login_at = now() WHERE id = $3', [branchId, ip, user.id])
   return { ...user, branch_id: branchId }
 }

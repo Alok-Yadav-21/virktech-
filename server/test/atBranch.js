@@ -10,6 +10,11 @@ import { query } from '../db.js'
 export const tokenOf = (res) => (res.headers['set-cookie'] ?? []).find((c) => c.startsWith('token='))?.split(';')[0].slice(6)
 
 // Pass { keepLogin: true } to only move the IP, for a second sign-in by someone who is already signed in (see tokenOf).
+// The branch to pick when signing a test user in (staff always say which branch they are at).
+export async function branchOf(pin) {
+  return (await query("SELECT branch_id FROM users WHERE pin = $1 AND role = 'staff'", [String(pin)])).rows[0]?.branch_id ?? null
+}
+
 export async function atPinBranch(pin, { keepLogin = false } = {}) {
   if (!keepLogin) await query("UPDATE users SET login_sid = NULL WHERE pin = $1 AND role = 'staff'", [String(pin)])
   const { rows: [u] } = await query("SELECT branch_id FROM users WHERE pin = $1 AND role = 'staff'", [String(pin)])

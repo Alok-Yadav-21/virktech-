@@ -18,8 +18,8 @@ const cleanup = async () => {
 // Staff arrive from 127.0.0.1 in tests; point that IP at their branch the way a real shop would have it saved.
 const atBranch = async () => { await query('UPDATE branches SET ip = NULL'); await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [blv]) }
 const free = () => query('UPDATE users SET login_sid = NULL WHERE id = $1', [id])
-const dash = (agent, pin = PIN) => agent.post('/api/auth/pin-login').send({ pin })
-const till = (agent, pin = PIN) => agent.post('/api/till/login').send({ pin })
+const dash = (agent, pin = PIN, branchId = blv) => agent.post('/api/auth/pin-login').send({ pin, branchId })
+const till = (agent, pin = PIN, branchId = blv) => agent.post('/api/till/login').send({ pin, branchId })
 const open = async () => (await query('SELECT count(*)::int AS n FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [id])).rows[0].n
 const clear = () => query('DELETE FROM shifts WHERE user_id = $1', [id])
 
@@ -128,38 +128,39 @@ test('changing a PIN or switching someone off frees their sign-in, and the old P
   expect((await admin.put(`/api/users/${id}`).send({ active: true, pin: PIN })).status).toBe(200)
 })
 
-test('staff can sign in from any IP: the IP is recorded and, with no shop saved for it, so is "no branch"', async () => {
-  await free(); await clear()
-  await query('UPDATE branches SET ip = NULL') // no branch has this IP saved
-  const r = await dash(request.agent(app))
-  expect(r.status, 'an unregistered IP still signs in').toBe(200)
-  expect(r.body.branch, 'but matches no branch').toBeNull()
-  const row = (await admin.get('/api/users?role=staff&all=1&limit=100')).body.find((u) => u.id === id)
-  expect(row).toMatchObject({ lastIp: '127.0.0.1', branchName: null, signedIn: true })
-  // No branch means no branch data: their own queries see nothing, however they ask.
-  expect((await query('SELECT branch_id FROM users WHERE id = $1', [id])).rows[0].branch_id).toBeNull()
-})
-
-test('a branch IP records that branch on the sign-in, and the admin sees which', async () => {
-  await free()
-  const sid = (await query("SELECT id FROM branches WHERE area = 'Sidcup'")).rows[0].id
-  await query('UPDATE branches SET ip = NULL'); await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [sid])
-  expect((await dash(request.agent(app))).body.branch).toBe(sid)
-  const row = (await admin.get('/api/users?role=staff&all=1&limit=100')).body.find((u) => u.id === id)
-  expect(row).toMatchObject({ lastIp: '127.0.0.1', branchName: 'Sidcup' })
-  await free()
-  await query('UPDATE branches SET ip = NULL'); await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [blv])
-  expect((await dash(request.agent(app))).body.branch, 'next sign-in is wherever that IP belongs').toBe(blv)
-})
-
-test('the till needs a registered shop, because every sale belongs to a branch', async () => {
+test('every sign-in picks a branch; it is recorded with the IP, and nothing is compared with a saved IP', async () => {
   await free(); await clear()
   await query('UPDATE branches SET ip = NULL')
-  const r = await till(request.agent(app))
-  expect(r.status).toBe(403)
-  expect(r.body.message).toMatch(/not registered to a branch/i)
+  const sid = (await query("SELECT id FROM branches WHERE area = 'Sidcup'")).rows[0].id
+  expect((await dash(request.agent(app), PIN, null)).status, 'correct PIN, but which branch?').toBe(422)
+  expect((await query('SELECT login_sid FROM users WHERE id = $1', [id])).rows[0].login_sid, 'nothing was claimed').toBeNull()
+  expect((await dash(request.agent(app), PIN, 999999)).status, 'no such branch').toBe(400)
+  expect((await dash(request.agent(app), PIN, 'abc')).status).toBe(400)
+
+  const r = await dash(request.agent(app), PIN, sid)
+  expect(r.status, 'signs in once they pick').toBe(200)
+  expect(r.body.branch).toBe(sid)
+  const row = (await admin.get('/api/users?role=staff&all=1&limit=100')).body.find((u) => u.id === id)
+  expect(row).toMatchObject({ lastIp: '127.0.0.1', branchName: 'Sidcup', signedIn: true })
+
+  // The next sign-in can be somewhere else, and a branch that happens to have this IP saved changes nothing.
+  await free()
+  await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [blv])
+  expect((await dash(request.agent(app), PIN, sid)).body.branch, 'the pick wins over a saved IP').toBe(sid)
+  await free()
+  expect((await dash(request.agent(app), PIN, blv)).body.branch).toBe(blv)
+  await query('UPDATE branches SET ip = NULL')
+})
+
+test('the till asks for the branch too, and a refused attempt starts no shift', async () => {
+  await free(); await clear()
+  expect((await till(request.agent(app), PIN, null)).status).toBe(422)
   expect((await query('SELECT login_sid FROM users WHERE id = $1', [id])).rows[0].login_sid, 'nothing was claimed').toBeNull()
   expect(await open(), 'and no shift was started').toBe(0)
+  const t = request.agent(app)
+  expect((await till(t, PIN, blv)).status, 'with a branch it opens').toBe(200)
+  expect(await open(), 'and starts the shift').toBe(1)
+  expect((await t.get('/api/till/me')).body).toMatchObject({ onShift: true, branchName: 'Belvedere' })
 })
 
 test('customers and admins are not limited to one sign-in', async () => {

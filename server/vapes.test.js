@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch } from './test/atBranch.js'
+import { branchOf, atPinBranch } from './test/atBranch.js'
 import pool, { query } from './db.js'
 
 // The vape range end to end: catalogue CRUD, deliveries add stock, 18+ orders, scope, and profit kept apart
@@ -13,7 +13,7 @@ let blv, sid, brand, product, profitBefore, revenueBefore
 async function loginPin(pin) {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  const r = await agent.post('/api/auth/pin-login').send({ pin, branchId: await branchOf(pin) })
   expect(r.status, `pin login ${pin}`).toBe(200)
   return agent
 }

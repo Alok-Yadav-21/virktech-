@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch, tokenOf } from './test/atBranch.js'
+import { branchOf, atPinBranch, tokenOf } from './test/atBranch.js'
 import { createUser } from './utils/users.js'
 import pool, { query } from './db.js'
 
@@ -27,11 +27,11 @@ beforeAll(async () => {
   // agents hold one cookie each (the separation tests below depend on that) but are the same login.
   as.dash = request.agent(app)
   await atPinBranch('123456')
-  const dashRes = await as.dash.post('/api/auth/pin-login').send({ pin: '123456' })
+  const dashRes = await as.dash.post('/api/auth/pin-login').send({ pin: '123456', branchId: await branchOf('123456') })
   expect(dashRes.status).toBe(200)
   as.staff = request.agent(app)
   await atPinBranch('123456', { keepLogin: true })
-  expect((await as.staff.post('/api/till/login').set('Cookie', `token=${tokenOf(dashRes)}`).send({ pin: '123456' })).status).toBe(200)
+  expect((await as.staff.post('/api/till/login').set('Cookie', `token=${tokenOf(dashRes)}`).send({ pin: '123456', branchId: await branchOf('123456') })).status).toBe(200)
   expect((await as.staff.get('/api/till/me')).body.onShift, 'signing in at the till clocked them in').toBe(true)
   for (const [k, email] of [['admin', 'admin@demo.com'], ['customer', 'customer@demo.com']]) {
     as[k] = request.agent(app)
@@ -147,7 +147,7 @@ test('the walk-in account cannot log in and is not listed as a customer', async 
 const tillAs = async (pin) => {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  expect((await agent.post('/api/till/login').send({ pin })).status).toBe(200)
+  expect((await agent.post('/api/till/login').send({ pin, branchId: await branchOf(pin) })).status).toBe(200)
   return agent
 }
 
@@ -162,7 +162,7 @@ test('the till and the dashboard are separate sign-ins', async () => {
   expect((await as.admin.get('/api/shifts')).status).toBe(200)
   // PIN rules: wrong PIN, and only staff PINs.
   await atPinBranch('000000')
-  expect((await request(app).post('/api/till/login').send({ pin: '000000' })).status).toBe(401)
+  expect((await request(app).post('/api/till/login').send({ pin: '000000', branchId: await branchOf('000000') })).status).toBe(401)
   expect((await request(app).post('/api/till/login').send({})).status).toBe(401)
   const me = (await as.staff.get('/api/till/me')).body
   expect(me).toMatchObject({ name: 'Demo Staff', onShift: true })
@@ -217,7 +217,7 @@ test('a sale needs the seller on shift, and admin can see who is working', async
 
 test('sign-in cookies are session cookies, so closing the browser signs out', async () => {
   await atPinBranch('123456')
-  const till = await request(app).post('/api/till/login').send({ pin: '123456' })
+  const till = await request(app).post('/api/till/login').send({ pin: '123456', branchId: await branchOf('123456') })
   const dash = await request(app).post('/api/auth/login').send({ email: 'customer@demo.com', password: PW })
   for (const r of [till, dash]) {
     const c = r.headers['set-cookie'].join(';')
@@ -236,28 +236,31 @@ test('admin sets a staff role; deleting staff hides them and frees the PIN', asy
   const list = (await as.admin.get('/api/users?role=staff&active=1&limit=100')).body
   expect(list.some((u) => u.id === made.body.id)).toBe(false)
   await atPinBranch('919100')
-  expect((await request(app).post('/api/till/login').send({ pin: '919100' })).status, 'deleted staff cannot sign in').toBe(401)
+  expect((await request(app).post('/api/till/login').send({ pin: '919100', branchId: await branchOf('919100') })).status, 'deleted staff cannot sign in').toBe(401)
   expect((await as.admin.post('/api/users').send({ name: 'Reuse', pin: '919100', role: 'staff', branchId: b })).status, 'PIN is free again').toBe(201)
 })
 
-test('a shop IP places staff at that shop; any other IP signs in to the dashboard with no branch, but cannot open the till', async () => {
+test('every staff sign-in picks a branch and records the IP; no saved IP is compared with anything', async () => {
   const [a, b] = (await as.admin.get('/api/branches?all=1')).body
   const mate = (await query("SELECT id FROM users WHERE pin = '777100'")).rows[0].id
   await query('UPDATE users SET login_sid = NULL WHERE id = $1', [mate]) // earlier tests left Till Mate signed in
-  await query("UPDATE users SET branch_id = NULL WHERE id = $1", [mate])
   await query('UPDATE branches SET ip = NULL')
-  expect((await request(app).post('/api/till/login').send({ pin: '777100' })).status, 'no branch has this IP').toBe(403)
-  const dashRes = await request(app).post('/api/auth/pin-login').send({ pin: '777100' })
-  expect(dashRes.status, 'the dashboard signs in anywhere').toBe(200)
-  expect(dashRes.body.branch).toBeNull()
+  expect((await request(app).post('/api/till/login').send({ pin: '777100' })).status, 'no branch picked').toBe(422)
+  expect((await request(app).post('/api/auth/pin-login').send({ pin: '777100' })).status).toBe(422)
+  expect((await request(app).post('/api/till/login').send({ pin: '777100', branchId: 999999 })).status, 'no such branch').toBe(400)
+  const dashRes = await request(app).post('/api/auth/pin-login').send({ pin: '777100', branchId: a.id })
+  expect(dashRes.status, 'signs in once they pick, with no IP saved anywhere').toBe(200)
+  expect(dashRes.body.branch).toBe(a.id)
   await query('UPDATE users SET login_sid = NULL WHERE id = $1', [mate]) // that dashboard sign-in took it
+
+  // A saved branch IP still exists for the admin to keep, but sign-in ignores it: picking another branch is believed.
   expect((await as.admin.put(`/api/branches/${b.id}`).send({ ip: 'not an ip' })).status).toBe(400)
   expect((await as.admin.get('/api/branches/my-ip')).body.ip).toBe('127.0.0.1')
   expect((await as.admin.put(`/api/branches/${b.id}`).send({ ip: '127.0.0.1' })).body.ip).toBe('127.0.0.1')
   expect((await as.admin.put(`/api/branches/${a.id}`).send({ ip: '127.0.0.1' })).status, 'one IP, one branch').toBe(409)
-  expect((await request(app).post('/api/till/login').send({ pin: '777100' })).body.branchId).toBe(b.id)
+  expect((await request(app).post('/api/till/login').send({ pin: '777100', branchId: a.id })).body.branchId, 'the pick wins over the saved IP').toBe(a.id)
   const row = (await as.admin.get('/api/users?role=staff&q=Till Mate')).body[0]
-  expect(row.branchName).toBe(b.area)
+  expect(row).toMatchObject({ branchName: a.area, lastIp: '127.0.0.1' })
   expect(row.lastLoginAt).toBeTruthy()
   expect((await request(app).get('/api/branches')).body.every((x) => !('ip' in x)), 'IP is admin-only').toBe(true)
   await query('UPDATE branches SET ip = NULL')

@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch, tokenOf } from './test/atBranch.js'
+import { branchOf, atPinBranch, tokenOf } from './test/atBranch.js'
 import pool, { query } from './db.js'
 import { createUser } from './utils/users.js'
 
@@ -15,7 +15,7 @@ let blv, sid, idA, idB
 const loginPin = async (pin) => {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  const r = await agent.post('/api/auth/pin-login').send({ pin, branchId: await branchOf(pin) })
   expect(r.status).toBe(200)
   agent.tokenValue = tokenOf(r)
   return agent
@@ -42,7 +42,7 @@ beforeAll(async () => {
     // The till on the same computer as the dashboard: one live sign-in held twice (see tokenOf), one cookie per agent.
     till[w] = request.agent(app)
     await atPinBranch(PINS[w], { keepLogin: true })
-    expect((await till[w].post('/api/till/login').set('Cookie', `token=${as[w].tokenValue}`).send({ pin: PINS[w] })).status).toBe(200)
+    expect((await till[w].post('/api/till/login').set('Cookie', `token=${as[w].tokenValue}`).send({ pin: PINS[w], branchId: await branchOf(PINS[w]) })).status).toBe(200)
   }
   // Signing in at the till clocked both of them in. These tests start and end shifts themselves, so begin from none.
   await query('DELETE FROM shifts WHERE user_id = ANY($1)', [[idA, idB]])

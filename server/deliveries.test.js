@@ -1,7 +1,7 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch } from './test/atBranch.js'
+import { branchOf, atPinBranch } from './test/atBranch.js'
 import pool, { query } from './db.js'
 
 // Deliveries add stock, cost feeds the margin report, and branch scope holds. Uses the demo users from the seed.
@@ -12,7 +12,7 @@ let blv, sid, product, startStock
 async function loginPin(pin) {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  const r = await agent.post('/api/auth/pin-login').send({ pin, branchId: await branchOf(pin) })
   expect(r.status, `pin login ${pin}`).toBe(200)
   return agent
 }
