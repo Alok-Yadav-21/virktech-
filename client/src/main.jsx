@@ -10,6 +10,15 @@ import { VapeCartProvider } from './context/VapeCartContext.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 import { BranchProvider } from './context/BranchContext.jsx'
 import App from './App.jsx'
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+
+// Each deploy renames the script files. A tab or cached page from before one asks for a page's script by its old name and
+// the load fails, which used to leave a blank screen. Load a fresh copy once; the flag stops a reload loop if it keeps failing.
+window.addEventListener('vite:preloadError', () => {
+  if (sessionStorage.getItem('vt_reloaded')) return
+  sessionStorage.setItem('vt_reloaded', '1')
+  window.location.reload()
+})
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <BrowserRouter>
@@ -17,7 +26,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <CartProvider>
         <BranchProvider>
           <VapeCartProvider>
-            <App />
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
           </VapeCartProvider>
         </BranchProvider>
       </CartProvider>
