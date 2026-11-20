@@ -1,24 +1,21 @@
-// Brand mark: a green rounded square with a V and a lime dot (the phone's camera).
+// Brand artwork, transparent: the V-in-a-phone mark and the full "VIRKTECH Mobile & Vape Experts" lockup.
+// The wordmark's "VIRK" is white in the original, which vanishes on a light page, so there are two
+// files per piece: the default has it in ink for light surfaces, `inverted` keeps it white for dark ones
+// (the footer). Same artwork either way; only that one colour changes.
+const file = (name, inverted) => `/img/virktech-${name}${inverted ? '-on-dark' : ''}.png`
+
 export function LogoMark({ size = 36, inverted = false }) {
-  const bg = inverted ? '#fff' : 'var(--vt-green-600)'
-  const fg = inverted ? 'var(--vt-green-700)' : '#fff'
   return (
-    <svg width={size} height={size} viewBox="0 0 36 36" aria-hidden="true" focusable="false">
-      <rect width="36" height="36" rx="11" fill={bg} />
-      <path d="M9.5 11.5 18 26l8.5-14.5" fill="none" stroke={fg} strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="26.5" cy="9.5" r="2.6" fill="var(--vt-lime)" />
-    </svg>
+    <img src={file('mark', inverted)} alt="" width={size} height={size} decoding="async"
+      style={{ display: 'block', flex: 'none' }} />
   )
 }
 
-export default function Logo({ inverted = false, subtitle = false }) {
+// `subtitle` is kept so existing callers need no change: the tagline is part of the lockup.
+export default function Logo({ inverted = false, height = 48 }) {
   return (
-    <>
-      <LogoMark inverted={inverted} />
-      <span style={{ lineHeight: 1.05, color: inverted ? '#fff' : undefined }}>
-        Virktech
-        {subtitle && <small style={{ color: inverted ? 'rgb(255 255 255 / 0.85)' : undefined }}>Smart Phones Repair</small>}
-      </span>
-    </>
+    <img src={file('logo', inverted)} alt="Virktech - Mobile & Vape Experts"
+      width={Math.round(height * (1460 / 351))} height={height} decoding="async"
+      style={{ display: 'block', height, width: 'auto' }} />
   )
 }

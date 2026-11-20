@@ -57,7 +57,7 @@ export default function PublicLayout() {
         <div className="container py-5 vt-footer-pad">
           <div className="row g-4">
             <div className="col-md-5">
-              <div className="vt-brand mb-3" style={{ color: '#fff' }}><Logo inverted subtitle /></div>
+              <div className="vt-brand mb-3" style={{ color: '#fff' }}><Logo inverted height={56} /></div>
               <p className="mb-0" style={{ color: 'rgb(255 255 255 / 0.82)', maxWidth: '34ch' }}>
                 Repairs, devices and trade-ins at {branch ? 'a branch near you' : 'branches across south-east London and Kent'}.
               </p>
