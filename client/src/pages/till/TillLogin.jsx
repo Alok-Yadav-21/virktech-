@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import AuthShell from '../../components/auth/AuthShell'
 import PinPad from '../../components/PinPad'
 
-// The till's own sign-in: whoever sits down taps their PIN on the keypad. It signs in to the till only, never to a dashboard.
+// The till's own sign-in: whoever sits down taps their PIN on the keypad. It signs in to the till only, never to a dashboard,
+// and starts their shift, so there is nothing more to confirm.
 export default function TillLogin({ onSignedIn }) {
   const [busy, setBusy] = useState(false)
 

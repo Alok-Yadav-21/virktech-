@@ -11,7 +11,10 @@ const PIN = '880011'
 const NEW_PIN = '880022'
 let blv, id, admin
 
-const cleanup = () => query('DELETE FROM users WHERE pin = ANY($1)', [[PIN, NEW_PIN]])
+const cleanup = async () => {
+  await query('DELETE FROM shifts WHERE user_id IN (SELECT id FROM users WHERE pin = ANY($1))', [[PIN, NEW_PIN]])
+  await query('DELETE FROM users WHERE pin = ANY($1)', [[PIN, NEW_PIN]])
+}
 // Staff arrive from 127.0.0.1 in tests; point that IP at their branch the way a real shop would have it saved.
 const atBranch = async () => { await query('UPDATE branches SET ip = NULL'); await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [blv]) }
 const free = () => query('UPDATE users SET login_sid = NULL WHERE id = $1', [id])
@@ -137,4 +140,49 @@ test('customers and admins are not limited to one sign-in', async () => {
   expect((await two.post('/api/auth/login').send({ email: 'customer@demo.com', password: PW })).status).toBe(200)
   expect((await one.get('/api/auth/me')).status).toBe(200)
   expect((await two.get('/api/auth/me')).status).toBe(200)
+})
+
+const open = async () => (await query('SELECT count(*)::int AS n FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [id])).rows[0].n
+const clear = () => query('DELETE FROM shifts WHERE user_id = $1', [id])
+
+test('signing in at the till starts the shift, with no second PIN, and signing in again changes nothing', async () => {
+  await atBranch(); await free(); await clear()
+  const t = request.agent(app)
+  expect((await till(t)).status).toBe(200)
+  expect(await open(), 'on shift straight away').toBe(1)
+  expect((await t.get('/api/till/me')).body.onShift).toBe(true)
+  expect((await till(t)).status, 'same browser again').toBe(200)
+  expect(await open(), 'still one shift').toBe(1)
+  // The dashboard sign-in is not a clock-in: only the till starts shifts.
+  await t.post('/api/auth/logout'); await free(); await clear()
+  expect((await dash(request.agent(app))).status).toBe(200)
+  expect(await open(), 'the dashboard starts nothing').toBe(0)
+})
+
+test('Close till ends the shift and signs out; plain Log out leaves the shift running', async () => {
+  await atBranch(); await free(); await clear()
+  const a = request.agent(app)
+  await till(a)
+  expect((await a.post('/api/till/logout')).status, 'plain log out').toBe(200)
+  expect(await open(), 'a plain log out ends nobody’s shift').toBe(1)
+  expect((await a.get('/api/till/me')).status).toBe(401)
+
+  const b = request.agent(app)
+  expect((await till(b)).status, 'back in, still the same single shift').toBe(200)
+  expect(await open()).toBe(1)
+  expect((await b.post('/api/till/logout').send({ endShift: true })).status, 'close till').toBe(200)
+  expect(await open(), 'the shift is over').toBe(0)
+  expect((await b.get('/api/till/me')).status, 'and the till is off').toBe(401)
+  expect((await query('SELECT login_sid FROM users WHERE id = $1', [id])).rows[0].login_sid, 'and the sign-in is free').toBeNull()
+  const shifts = (await query('SELECT started_at, ended_at FROM shifts WHERE user_id = $1', [id])).rows
+  expect(shifts.every((s) => s.ended_at), 'every shift has an end time').toBe(true)
+})
+
+test('a signed-out cookie cannot end a shift by pressing Close till', async () => {
+  await atBranch(); await free(); await clear()
+  const a = request.agent(app)
+  await till(a)
+  expect((await admin.post(`/api/users/${id}/sign-out`)).status).toBe(200) // their login is over; the old cookie is stale
+  expect((await a.post('/api/till/logout').send({ endShift: true })).status).toBe(200)
+  expect(await open(), 'the stale cookie ended nothing').toBe(1)
 })

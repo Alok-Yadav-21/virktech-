@@ -38,13 +38,22 @@ router.post('/login', pinLimiter, wrap(async (req, res) => {
   assertNoOtherLogin(req, user) // before the IP step, so a refused attempt records nothing
   const here = await signInAtBranch(req, user)
   setTillCookie(res, here, await claimLogin(user))
+  // Signing in at the till is clocking in: no second PIN. Already on shift (signed in again, or clocked in at a
+  // colleague's till) is fine, so that one refusal is ignored.
+  await startShift(here).catch((e) => { if (e.status !== 409) throw e })
   res.json(who(here))
 }))
 
 // Signs out of the till. The staff member's live sign-in is given up too, unless this browser also holds their
 // dashboard sign-in (the till and dashboard on one computer are one login), which then carries on.
+// { endShift: true } is "Close till": it also clocks them out, so signing in opens the till and closing it shuts it.
+// Plain log out (switching person) leaves their shift running. A stale cookie ends nobody's shift.
 router.post('/logout', wrap(async (req, res) => {
   const t = claimsOf(req, 'till_token')
+  if (t && req.body?.endShift === true) {
+    const { rowCount } = await query('SELECT 1 FROM users WHERE id = $1 AND login_sid = $2', [t.id, t.sid])
+    if (rowCount) await endShift(t.id).catch((e) => { if (e.status !== 409) throw e }) // 409 = no shift was running
+  }
   if (t && claimsOf(req, 'token')?.sid !== t.sid) await releaseLogin(t.id, t.sid)
   res.clearCookie('till_token', TILL_COOKIE)
   res.json({ ok: true })

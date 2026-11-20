@@ -32,7 +32,7 @@ beforeAll(async () => {
   as.staff = request.agent(app)
   await atPinBranch('123456', { keepLogin: true })
   expect((await as.staff.post('/api/till/login').set('Cookie', `token=${tokenOf(dashRes)}`).send({ pin: '123456' })).status).toBe(200)
-  expect((await as.staff.post('/api/till/shift/start')).status).toBe(201)
+  expect((await as.staff.get('/api/till/me')).body.onShift, 'signing in at the till clocked them in').toBe(true)
   for (const [k, email] of [['admin', 'admin@demo.com'], ['customer', 'customer@demo.com']]) {
     as[k] = request.agent(app)
     expect((await as[k].post('/api/auth/login').send({ email, password: PW })).status).toBe(200)
@@ -170,7 +170,7 @@ test('the till and the dashboard are separate sign-ins', async () => {
   // Switch person: signing out of the till ends no shift. (Someone else, since Demo Staff is signed in above.)
   extra.switcher = (await createUser({ name: 'Switch Person', role: 'staff', branchId: blv, pin: '777300', dailyWage: 70 })).id
   const other = await tillAs('777300')
-  expect((await other.post('/api/till/shift/start')).status).toBe(201)
+  expect((await other.get('/api/till/me')).body.onShift, 'signing in clocked them in').toBe(true)
   expect((await other.post('/api/till/logout')).status).toBe(200)
   expect((await other.get('/api/till/me')).status).toBe(401)
   expect((await query('SELECT 1 FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [extra.switcher])).rowCount).toBe(1)
@@ -200,6 +200,7 @@ test('anyone from this branch can clock in and out at the till with their own PI
 
 test('a sale needs the seller on shift, and admin can see who is working', async () => {
   const mate = await tillAs('777100')
+  expect((await mate.post('/api/till/shift/end')).status, 'signing in clocked Till Mate in; take that back').toBe(200)
   const res = await mate.post('/api/till/sales').send({ items: [{ kind: 'electronics', productId: tee, qty: 1 }], paymentMethod: 'cash' })
   expect(res.status).toBe(409)
   expect(res.body.message).toMatch(/shift/i)

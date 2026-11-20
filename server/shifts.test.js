@@ -44,6 +44,8 @@ beforeAll(async () => {
     await atPinBranch(PINS[w], { keepLogin: true })
     expect((await till[w].post('/api/till/login').set('Cookie', `token=${as[w].tokenValue}`).send({ pin: PINS[w] })).status).toBe(200)
   }
+  // Signing in at the till clocked both of them in. These tests start and end shifts themselves, so begin from none.
+  await query('DELETE FROM shifts WHERE user_id = ANY($1)', [[idA, idB]])
   as.admin = request.agent(app)
   expect((await as.admin.post('/api/auth/login').send({ email: 'admin@demo.com', password: PW })).status).toBe(200)
   as.customer = request.agent(app)

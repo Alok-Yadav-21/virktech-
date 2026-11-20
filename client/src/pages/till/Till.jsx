@@ -16,17 +16,18 @@ const TABS = [['', 'All'], ['electronics', 'Electronics'], ['vape', 'Vapes']]
 const keyOf = (i) => `${i.kind}-${i.id}`
 
 // The till signs in on its own (PIN, separate cookie) so nobody at the counter can reach a dashboard, hours or wages.
-// "Log out" leaves the till and ends nobody's shift.
+// Typing a PIN to sign in also starts that person's shift (the server does it), and "Close till" ends it and signs out.
+// "Log out" only switches person: it leaves the shift running.
 export default function Till() {
   const [me, setMe] = useState(undefined) // undefined = checking, null = nobody signed in
   const loadMe = () => api.get('/till/me', { quiet: true }).then((r) => setMe(r.data))
     .catch((e) => (e.response?.status === 401 ? setMe(null) : toast.error(errMsg(e))))
   useEffect(() => { loadMe() }, [])
   const logOut = () => api.post('/till/logout').then(() => setMe(null)).catch(() => { /* api.js already toasted */ })
-  // Ends nobody's shift: it only signs this person out of the till. If the browser will not close the tab (it was not
-  // opened by the till link), go to the shop instead.
+  // Clocks this person out and signs them out of the till, so the till is off. If the browser will not close the tab
+  // (it was not opened by the till link), go to the shop instead.
   const closeTill = async () => {
-    try { await api.post('/till/logout') } catch { return /* api.js already toasted; stay put */ }
+    try { await api.post('/till/logout', { endShift: true }) } catch { return /* api.js already toasted; stay put */ }
     window.close()
     window.location.assign('/')
   }
@@ -90,7 +91,8 @@ function Counter({ me, reloadMe, onLogOut, onClose }) {
       {crew.data?.filter((c) => c.onShift).map((c) => <span key={c.id} className="badge bg-success">{c.name}</span>)}
     </span>
   )
-  // Locked screen: whoever taps their PIN starts their shift; the server hands the till to them.
+  // Only seen when someone is signed in but not clocked in (they ended their shift from the Shifts window): whoever taps
+  // their PIN starts their shift and the server hands the till to them.
   const startWithPin = (pin) => api.post('/till/clock', { pin, action: 'start' }).then(changed).catch(() => { /* api.js already toasted */ })
 
   if (!me.onShift) {
