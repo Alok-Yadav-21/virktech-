@@ -3,7 +3,7 @@ import crud from './crud.js'
 import { byDistance } from '../utils/geo.js'
 import { fail, wrap } from '../utils/validate.js'
 import { protect, requireRole } from '../middleware/auth.js'
-import { checkIp, cleanIp } from '../utils/branchByIp.js'
+import { checkIp, clientIp } from '../utils/branchByIp.js'
 
 export const categories = crud({
   table: 'categories', fields: { name: 'name' }, required: ['name'], order: 't.name',
@@ -49,7 +49,7 @@ export const branches = crud({
   setup: (router) => {
     router.use((req, res, next) => { try { if (req.body && 'ip' in req.body) req.body.ip = checkIp(req.body.ip); next() } catch (e) { next(e) } })
     // The address of the computer asking, for the "Use this computer's IP" button.
-    router.get('/my-ip', protect, requireRole('admin'), (req, res) => res.json({ ip: cleanIp(req.ip) }))
+    router.get('/my-ip', protect, requireRole('admin'), (req, res) => res.json({ ip: clientIp(req) }))
     router.get('/nearest', wrap(async (req, res) => {
     const postcode = String(req.query.postcode || '').trim().slice(0, 12)
     if (!postcode) throw fail(400, 'postcode is required')
