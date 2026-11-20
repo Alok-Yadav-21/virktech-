@@ -18,7 +18,7 @@ export default function TillLogin({ onSignedIn }) {
 
   return (
     <div className="container py-5">
-      <AuthShell title="Till" subtitle="Tap your 4-digit PIN to use the till." footer={<Link to="/login">Back to login</Link>}>
+      <AuthShell title="Till" subtitle="Tap your 6-digit PIN to use the till." footer={<Link to="/login">Back to login</Link>}>
         <PinPad onComplete={submit} disabled={busy} />
       </AuthShell>
     </div>

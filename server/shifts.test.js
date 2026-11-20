@@ -1,13 +1,13 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch } from './test/atBranch.js'
+import { atPinBranch, tokenOf } from './test/atBranch.js'
 import pool, { query } from './db.js'
 import { createUser } from './utils/users.js'
 
 // Start/end a shift, who can see which hours, and a day's pay from the rate stored on the shift.
 const PW = 'Password123!'
-const PINS = { a: '9101', b: '9102' }
+const PINS = { a: '910100', b: '910200' }
 const as = {}
 const till = {} // each person's own till sign-in: shifts start and end only at the till
 let blv, sid, idA, idB
@@ -15,7 +15,9 @@ let blv, sid, idA, idB
 const loginPin = async (pin) => {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  expect((await agent.post('/api/auth/pin-login').send({ pin })).status).toBe(200)
+  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  expect(r.status).toBe(200)
+  agent.tokenValue = tokenOf(r)
   return agent
 }
 const clock = (who, pin, action, extra = {}) => till[who].post('/api/till/clock').send({ pin, action, ...extra })
@@ -37,9 +39,10 @@ beforeAll(async () => {
   as.a = await loginPin(PINS.a)
   as.b = await loginPin(PINS.b)
   for (const w of ['a', 'b']) {
+    // The till on the same computer as the dashboard: one live sign-in held twice (see tokenOf), one cookie per agent.
     till[w] = request.agent(app)
-    await atPinBranch(PINS[w])
-    expect((await till[w].post('/api/till/login').send({ pin: PINS[w] })).status).toBe(200)
+    await atPinBranch(PINS[w], { keepLogin: true })
+    expect((await till[w].post('/api/till/login').set('Cookie', `token=${as[w].tokenValue}`).send({ pin: PINS[w] })).status).toBe(200)
   }
   as.admin = request.agent(app)
   expect((await as.admin.post('/api/auth/login').send({ email: 'admin@demo.com', password: PW })).status).toBe(200)
@@ -133,15 +136,15 @@ test('a deactivated staff member is locked out at once', async () => {
 })
 
 test('the till stays open for the people still on shift when the first one leaves', async () => {
-  const c = await createUser({ name: 'Shift C', role: 'staff', branchId: blv, pin: '7782', dailyWage: 10 })
+  const c = await createUser({ name: 'Shift C', role: 'staff', branchId: blv, pin: '778200', dailyWage: 10 })
   try {
     expect((await clock('a', PINS.a, 'start')).status).toBe(200)
-    expect((await clock('a', '7782', 'start')).body.holder.name, 'holder still on shift').toBe('Shift A')
+    expect((await clock('a', '778200', 'start')).body.holder.name, 'holder still on shift').toBe('Shift A')
     const left = await clock('a', PINS.a, 'end') // the person who opened the till leaves first
     expect(left.body.holder.name, 'till passes to the one still working').toBe('Shift C')
     const me = await till.a.get('/api/till/me') // same cookie jar, no new sign-in
     expect(me.body).toMatchObject({ name: 'Shift C', onShift: true })
-    const last = await clock('a', '7782', 'end')
+    const last = await clock('a', '778200', 'end')
     expect(last.status).toBe(200)
     expect((await till.a.get('/api/till/me')).body.onShift, 'nobody on shift: locked').toBe(false)
     expect((await clock('a', PINS.a, 'start')).body.holder.name, 'a new start takes the till').toBe('Shift A')

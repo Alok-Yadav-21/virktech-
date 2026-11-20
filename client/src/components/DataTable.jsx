@@ -1,6 +1,7 @@
 // Generic list for admin CRUD. columns: [{ key, label, render?(row) }]. A column with no label is a picture.
 // Wide screens get a table; phones get one card per row (a table would scroll sideways).
-export default function DataTable({ columns, rows, onEdit, onDelete, deleteLabel = 'Delete' }) {
+// extra: optional row buttons [{ label, show?(row), run(row) }], e.g. an admin's "Sign out" on a staff row.
+export default function DataTable({ columns, rows, onEdit, onDelete, deleteLabel = 'Delete', extra = [] }) {
   if (!rows.length) return <p className="text-secondary">Nothing here yet.</p>
   const cell = (c, r) => (c.render ? c.render(r) : r[c.key])
   const media = columns.find((c) => !c.label)
@@ -9,6 +10,7 @@ export default function DataTable({ columns, rows, onEdit, onDelete, deleteLabel
   const actions = (r) => (
     <>
       <button className="btn btn-sm btn-outline-primary" onClick={() => onEdit(r)}>Edit</button>
+      {extra.filter((e) => !e.show || e.show(r)).map((e) => <button key={e.label} className="btn btn-sm btn-outline-secondary" onClick={() => e.run(r)}>{e.label}</button>)}
       <button className="btn btn-sm btn-outline-danger" onClick={() => onDelete(r)}>{deleteLabel}</button>
     </>
   )

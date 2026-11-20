@@ -67,7 +67,7 @@ export async function seedDemo({ force = false } = {}) {
   const ids = {}
   for (const u of [
     { name: 'Demo Customer', email: 'customer@demo.com', role: 'customer' },
-    { name: 'Demo Staff', role: 'staff', branchId: branches.Belvedere, pin: '1234', dailyWage: 80, staffRole: 'Biller', noPassword: true },
+    { name: 'Demo Staff', role: 'staff', branchId: branches.Belvedere, pin: '123456', dailyWage: 80, staffRole: 'Biller', noPassword: true },
     { name: 'Demo Admin', email: 'admin@demo.com', role: 'admin' },
   ]) ids[u.role] = (await createUser({ ...u, password: u.noPassword ? null : 'Password123!' })).id
   await seedVapesDemo(pool, branches, ids.customer)

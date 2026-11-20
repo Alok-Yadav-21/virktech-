@@ -15,6 +15,10 @@ const guard = (cookie) => async (req, res, next) => {
     if (!user || !user.active) throw fail(401, 'Account unavailable')
     // A password change or reset ends every session issued before it.
     if ((user.password_changed_at?.getTime() ?? 0) !== (claims.pv ?? 0)) throw fail(401, 'Your password changed. Please log in again')
+    // Staff have one live sign-in; a cookie from an ended one (logged out, or signed out by an admin) is dead.
+    // Tokens issued before sign-ins were tracked carry no id and match a user who has none, until they next sign in.
+    if (user.role === 'staff' && (claims.sid ?? null) !== (user.login_sid ?? null)) throw fail(401, 'You were signed out. Please log in again')
+    req.sid = claims.sid
     req.user = user // snake_case DB row; use req.user.branch_id for scoping
     next()
   } catch (e) { next(e) }

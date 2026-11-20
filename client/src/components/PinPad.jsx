@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 
-// On-screen 4-digit PIN keypad for touch screens. There is no <input>, so the tablet's own keyboard never opens.
-// Calls onComplete(pin) at the 4th digit, then clears itself so a wrong PIN can be retyped at once.
+// On-screen 6-digit PIN keypad for touch screens. There is no <input>, so the tablet's own keyboard never opens.
+// Calls onComplete(pin) at the 6th digit, then clears itself so a wrong PIN can be retyped at once.
 // A physical keyboard or USB number pad also works (digits, Backspace, Escape).
+// Same length the server enforces (routes/users.js checkPin and migration 014).
+const PIN_LENGTH = 6
+
 export default function PinPad({ onComplete, disabled = false }) {
   const [pin, setPin] = useState('')
   const done = useRef(onComplete)
@@ -10,8 +13,8 @@ export default function PinPad({ onComplete, disabled = false }) {
 
   const press = (d) => {
     if (disabled) return
-    const next = (pin + d).slice(0, 4)
-    if (next.length === 4) { setPin(''); done.current(next) } else setPin(next)
+    const next = (pin + d).slice(0, PIN_LENGTH)
+    if (next.length === PIN_LENGTH) { setPin(''); done.current(next) } else setPin(next)
   }
   const back = () => setPin((p) => p.slice(0, -1))
 
@@ -33,8 +36,8 @@ export default function PinPad({ onComplete, disabled = false }) {
 
   return (
     <div className="mx-auto" style={{ maxWidth: 320 }}>
-      <div className="d-flex justify-content-center gap-3 mb-4" role="status" aria-label={`${pin.length} of 4 digits typed`}>
-        {[0, 1, 2, 3].map((i) => (
+      <div className="d-flex justify-content-center gap-2 mb-4" role="status" aria-label={`${pin.length} of ${PIN_LENGTH} digits typed`}>
+        {Array.from({ length: PIN_LENGTH }, (_, i) => i).map((i) => (
           <span key={i} className={`rounded-circle border border-2 border-primary ${i < pin.length ? 'bg-primary' : ''}`} style={{ width: 20, height: 20 }} />
         ))}
       </div>

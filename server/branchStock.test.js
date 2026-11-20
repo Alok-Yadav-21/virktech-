@@ -1,13 +1,13 @@
 import { test, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import app from './app.js'
-import { atPinBranch } from './test/atBranch.js'
+import { atPinBranch, tokenOf } from './test/atBranch.js'
 import pool, { query } from './db.js'
 import { createUser } from './utils/users.js'
 
 // Staff dashboard stock screens: sub-category tiles, barcode lookup and linking, stock added by scanning, deliveries, today-only lists.
 const PW = 'Password123!'
-const PINS = { sidcup: '9201' }
+const PINS = { sidcup: '920100' }
 const CODES = { tee: 'TB-ELEC-1', vape: 'TB-VAPE-1', fresh: 'TB-FRESH-1' }
 const SUPPLIER = 'TB Supplier'
 const as = {}
@@ -18,7 +18,9 @@ const stockOf = async (table, branch, id) => (await query(`SELECT COALESCE(max(s
 const dash = async (pin) => {
   const agent = request.agent(app)
   await atPinBranch(pin)
-  expect((await agent.post('/api/auth/pin-login').send({ pin })).status).toBe(200)
+  const r = await agent.post('/api/auth/pin-login').send({ pin })
+  expect(r.status).toBe(200)
+  agent.tokenValue = tokenOf(r)
   return agent
 }
 const cleanup = async () => {
@@ -43,12 +45,13 @@ beforeAll(async () => {
   for (const [t, p, b] of [['branch_stock', tee, blv], ['vape_stock', vape, blv], ['branch_stock', tee, sid]]) {
     await query(`INSERT INTO ${t} (branch_id, product_id, stock) VALUES ($1, $2, 10) ON CONFLICT (branch_id, product_id) DO UPDATE SET stock = 10`, [b, p])
   }
-  as.staff = await dash('1234')
+  as.staff = await dash('123456')
   extra.push((await createUser({ name: 'TB Sidcup', role: 'staff', branchId: sid, pin: PINS.sidcup })).id)
   as.sidcup = await dash(PINS.sidcup)
+  // The till on the same computer as the dashboard: one live sign-in held twice (see tokenOf), one cookie per agent.
   as.till = request.agent(app)
-  await atPinBranch('1234')
-  expect((await as.till.post('/api/till/login').send({ pin: '1234' })).status).toBe(200)
+  await atPinBranch('123456', { keepLogin: true })
+  expect((await as.till.post('/api/till/login').set('Cookie', `token=${as.staff.tokenValue}`).send({ pin: '123456' })).status).toBe(200)
   as.customer = request.agent(app)
   expect((await as.customer.post('/api/auth/login').send({ email: 'customer@demo.com', password: PW })).status).toBe(200)
   as.admin = request.agent(app)

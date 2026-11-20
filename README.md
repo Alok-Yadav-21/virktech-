@@ -27,7 +27,7 @@ npm install
 npm run dev               # http://localhost:5173
 ```
 
-Demo logins (password `Password123!`): `customer@demo.com`, `admin@demo.com`. Staff sign in at `/staff-login` with a 4-digit PIN: `1234` (Belvedere).
+Demo logins (password `Password123!`): `customer@demo.com`, `admin@demo.com`. Staff sign in at `/staff-login` with a 6-digit PIN: `123456` (Belvedere).
 The demo seed gives every product 10 in stock at every branch.
 
 ## Tests
@@ -92,7 +92,7 @@ npm run create-admin -- --email you@shop.com --name "Your Name" --password "a-lo
 Then log in and, in this order:
 
 1. **Admin > Branches:** check addresses, postcodes, **phone numbers** and map coordinates for each of the 8 branches.
-2. **Admin > Staff:** add each staff member with a unique 4-digit PIN, a daily wage and their branch. They only ever see that branch's repairs, orders, trade-ins and stock.
+2. **Admin > Staff:** add each staff member with a unique 6-digit PIN, a daily wage and their branch. They only ever see that branch's repairs, orders, trade-ins and stock.
 3. **Staff > Stock** (or **Admin > Stock by branch**): enter the real counts. Until you do, everything shows "Out of stock".
 4. **Admin > Products / Services:** replace the sample products, photos and prices with real ones. Set service "from" prices.
 5. Have the Terms, Privacy and Warranty wording reviewed (`client/src/pages/public/staticContent.js` is placeholder text).

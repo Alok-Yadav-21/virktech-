@@ -30,8 +30,8 @@ beforeAll(async () => {
   as.admin = await login('admin@demo.com')
   as.customer = await login('customer@demo.com')
   as.staff = request.agent(app)
-  await atPinBranch('1234')
-  expect((await as.staff.post('/api/auth/pin-login').send({ pin: '1234' })).status).toBe(200)
+  await atPinBranch('123456')
+  expect((await as.staff.post('/api/auth/pin-login').send({ pin: '123456' })).status).toBe(200)
   cust = (await query("SELECT id FROM users WHERE email = 'customer@demo.com'")).rows[0].id
   // A branch of its own, so these figures cannot be disturbed by other test files.
   branch = (await query("INSERT INTO branches (name, area) VALUES ('Test Rep Branch', 'Test Rep Area') RETURNING id")).rows[0].id

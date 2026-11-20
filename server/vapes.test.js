@@ -32,7 +32,7 @@ beforeAll(async () => {
   blv = (await query("SELECT id FROM branches WHERE area = 'Belvedere'")).rows[0].id
   sid = (await query("SELECT id FROM branches WHERE area = 'Sidcup'")).rows[0].id
   as.customer = await login('customer@demo.com')
-  as.staff = await loginPin('1234') // Belvedere
+  as.staff = await loginPin('123456') // Belvedere
   as.admin = await login('admin@demo.com')
   profitBefore = (await as.admin.get('/api/vapes/margins/summary')).body.profitToDate
   revenueBefore = (await as.admin.get('/api/vapes/dashboard')).body.revenueLast30Days

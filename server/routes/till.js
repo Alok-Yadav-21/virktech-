@@ -7,6 +7,7 @@ import { pinLimiter } from '../middleware/limits.js'
 import { config } from '../config.js'
 import { startShift, endShift, needShift } from '../utils/shifts.js'
 import { setCookie } from '../utils/session.js'
+import { assertNoOtherLogin, claimLogin, releaseLogin, claimsOf } from '../utils/login.js'
 import { nextReference } from '../utils/reference.js'
 import { nextVapeReference } from '../utils/vapeReference.js'
 import { pageOf, likeOf } from '../utils/paging.js'
@@ -25,8 +26,8 @@ const staffByPin = async (pin) => {
   return rows[0]
 }
 // pv ties the token to the account's last PIN/password change, as the dashboard cookie does.
-const setTillCookie = (res, user) => {
-  const token = jwt.sign({ id: user.id, pv: user.password_changed_at?.getTime() ?? 0 }, process.env.JWT_SECRET, { expiresIn: '12h' })
+const setTillCookie = (res, user, sid) => {
+  const token = jwt.sign({ id: user.id, pv: user.password_changed_at?.getTime() ?? 0, sid }, process.env.JWT_SECRET, { expiresIn: '12h' })
   res.cookie('till_token', token, TILL_COOKIE) // session cookie: the browser closing signs the till out
 }
 const who = (u) => ({ id: u.id, name: u.name, branchId: u.branch_id })
@@ -34,21 +35,26 @@ const who = (u) => ({ id: u.id, name: u.name, branchId: u.branch_id })
 router.post('/login', pinLimiter, wrap(async (req, res) => {
   const user = await staffByPin(req.body.pin)
   if (!user) throw fail(401, 'Wrong PIN')
+  assertNoOtherLogin(req, user) // before the IP step, so a refused attempt records nothing
   const here = await signInAtBranch(req, user)
-  setTillCookie(res, here)
+  setTillCookie(res, here, await claimLogin(user))
   res.json(who(here))
 }))
 
-router.post('/logout', (req, res) => {
+// Signs out of the till. The staff member's live sign-in is given up too, unless this browser also holds their
+// dashboard sign-in (the till and dashboard on one computer are one login), which then carries on.
+router.post('/logout', wrap(async (req, res) => {
+  const t = claimsOf(req, 'till_token')
+  if (t && claimsOf(req, 'token')?.sid !== t.sid) await releaseLogin(t.id, t.sid)
   res.clearCookie('till_token', TILL_COOKIE)
   res.json({ ok: true })
-})
+}))
 
 router.use(protectTill, requireRole('staff'))
 
 // The person already proved who they are with their PIN, so "Stock & deliveries" opens their staff dashboard without a
 // second PIN. Same account, same rules; hours and wages stay admin-only. One-way: a dashboard session never opens the till.
-router.post('/open-dashboard', (req, res) => { setCookie(res, req.user); res.json({ ok: true }) })
+router.post('/open-dashboard', (req, res) => { setCookie(res, req.user, req.sid); res.json({ ok: true }) })
 
 router.get('/me', wrap(async (req, res) => {
   const { rows: [b] } = await query('SELECT area FROM branches WHERE id = $1', [req.user.branch_id])
@@ -81,10 +87,14 @@ router.post('/clock', pinLimiter, wrap(async (req, res) => {
   // The till stays open while anyone is on shift: if the person holding it just left, it passes to the one who has been on longest.
   let holder = req.user
   if (!(await query('SELECT 1 FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [holder.id])).rowCount) {
+    // Only someone who is not signed in anywhere else can take it over: it would otherwise be a second live sign-in.
     const { rows: [next] } = await query(
       `SELECT u.* FROM shifts s JOIN users u ON u.id = s.user_id
-       WHERE s.ended_at IS NULL AND s.branch_id = $1 AND u.active ORDER BY s.started_at LIMIT 1`, [req.user.branch_id])
-    if (next) { setTillCookie(res, next); holder = next }
+       WHERE s.ended_at IS NULL AND s.branch_id = $1 AND u.active AND u.login_sid IS NULL ORDER BY s.started_at LIMIT 1`, [req.user.branch_id])
+    if (next) {
+      await releaseLogin(holder.id, req.sid) // the cookie that carried the old holder is being replaced
+      setTillCookie(res, next, await claimLogin(next)); holder = next
+    }
   }
   res.json({ name: person.name, action, holder: { id: holder.id, name: holder.name } })
 }))

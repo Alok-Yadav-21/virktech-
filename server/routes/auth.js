@@ -7,6 +7,7 @@ import { createUser, hashPassword, toPublic, DUMMY_HASH } from '../utils/users.j
 import { protect } from '../middleware/auth.js'
 import { loginLimiter, pinLimiter, registerLimiter } from '../middleware/limits.js'
 import { COOKIE, setCookie } from '../utils/session.js'
+import { assertNoOtherLogin, claimLogin, releaseLogin, claimsOf } from '../utils/login.js'
 import { fail, str, wrap } from '../utils/validate.js'
 
 const router = Router()
@@ -61,15 +62,19 @@ router.post('/pin-login', pinLimiter, wrap(async (req, res) => {
   const { rows } = await query("SELECT * FROM users WHERE pin = $1 AND role = 'staff'", [pin])
   const user = rows[0]
   if (!user || !user.active) throw fail(401, 'Wrong PIN')
+  assertNoOtherLogin(req, user) // before the IP step, so a refused attempt records nothing
   const here = await signInAtBranch(req, user)
-  setCookie(res, here)
+  setCookie(res, here, await claimLogin(user))
   res.json(toPublic(here))
 }))
 
-router.post('/logout', (req, res) => {
+// Logging out gives up the staff member's live sign-in, which also ends the till if it was opened from this login.
+router.post('/logout', wrap(async (req, res) => {
+  const c = claimsOf(req, 'token')
+  if (c) await releaseLogin(c.id, c.sid)
   res.clearCookie('token', COOKIE)
   res.json({ ok: true })
-})
+}))
 
 router.get('/me', protect, (req, res) => res.json(toPublic(req.user)))
 

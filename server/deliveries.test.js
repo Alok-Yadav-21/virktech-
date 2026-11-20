@@ -31,7 +31,7 @@ beforeAll(async () => {
   // A product of its own, so these tests never fight other test files over the demo products' stock.
   product = (await query("INSERT INTO products (name, category_id, price) VALUES ('Test Delivery Phone', (SELECT min(id) FROM categories), 20) RETURNING id, price")).rows[0]
   as.customer = await login('customer@demo.com')
-  as.staff = await loginPin('1234') // Belvedere
+  as.staff = await loginPin('123456') // Belvedere
   as.admin = await login('admin@demo.com')
   startStock = await stockAt(blv)
 })

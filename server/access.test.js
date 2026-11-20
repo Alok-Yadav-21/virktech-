@@ -9,7 +9,7 @@ import { createUser } from './utils/users.js'
 // Temporary users and records are created here and removed in afterAll.
 const PW = 'Password123!'
 const TEMP = { other: 'access-other@test.local' }
-const SIDCUP_PIN = '9001'
+const SIDCUP_PIN = '900100'
 const refs = { repair: null, tradeIn: null, order: null }
 const as = {}
 
@@ -36,7 +36,7 @@ beforeAll(async () => {
   await createUser({ name: 'Access Other', email: TEMP.other, password: PW })
 
   as.customer = await login('customer@demo.com')
-  as.staff = await loginPin('1234') // Belvedere
+  as.staff = await loginPin('123456') // Belvedere
   as.admin = await login('admin@demo.com')
   as.sidcup = await loginPin(SIDCUP_PIN)
   as.other = await login(TEMP.other)

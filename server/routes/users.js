@@ -14,7 +14,7 @@ router.use(protect, requireRole('admin'))
 const MANAGED = ['staff', 'customer']
 
 const SELECT = `
-  SELECT u.id, u.name, u.email, u.phone, u.role, u.pin, u.daily_wage AS "dailyWage", u.staff_role AS "staffRole", u.last_login_at AS "lastLoginAt", u.branch_id AS "branchId", b.area AS "branchName",
+  SELECT u.id, u.name, u.email, u.phone, u.role, u.pin, u.daily_wage AS "dailyWage", u.staff_role AS "staffRole", u.last_login_at AS "lastLoginAt", u.last_ip AS "lastIp", (u.login_sid IS NOT NULL) AS "signedIn", u.branch_id AS "branchId", b.area AS "branchName",
          u.loyalty_points AS "loyaltyPoints", u.active, count(*) OVER() AS total_count
   FROM users u LEFT JOIN branches b ON b.id = u.branch_id`
 
@@ -27,7 +27,7 @@ const target = async (req) => {
 }
 const checkPassword = (p) => { if (typeof p !== 'string' || p.length < 8 || p.length > 200) throw fail(400, 'Password must be at least 8 characters') }
 const clean = ({ total_count, ...u }) => u
-const checkPin = (p) => { if (!/^\d{4}$/.test(String(p ?? ''))) throw fail(400, 'PIN must be exactly 4 digits'); return String(p) }
+const checkPin = (p) => { if (!/^\d{6}$/.test(String(p ?? ''))) throw fail(400, 'PIN must be exactly 6 digits'); return String(p) }
 const checkWage = (w) => {
   if (w == null || w === '') return null
   if (!(Number(w) >= 0 && Number(w) < 1000)) throw fail(400, 'Daily wage must be between 0 and 1000')
@@ -87,11 +87,11 @@ router.put('/:id', wrap(async (req, res) => {
     set('email', e)
   }
   if (phone !== undefined) set('phone', str(phone, { max: 30, label: 'Phone' }) || null)
-  if (typeof active === 'boolean') set('active', active)
+  if (typeof active === 'boolean') { set('active', active); if (!active) sets.push('login_sid = NULL') }
   if (user.role === 'staff') {
     if (req.body.pin !== undefined && checkPin(req.body.pin) !== user.pin) { // a new PIN ends the old holder's sessions
       set('pin', String(req.body.pin))
-      sets.push('password_changed_at = now()')
+      sets.push('password_changed_at = now()', 'login_sid = NULL') // frees the sign-in too, or they could not use the new PIN
     }
     if (req.body.dailyWage !== undefined) set('daily_wage', checkWage(req.body.dailyWage))
     if (req.body.staffRole !== undefined) set('staff_role', checkStaffRole(req.body.staffRole))
@@ -113,8 +113,17 @@ router.put('/:id', wrap(async (req, res) => {
 // A staff PIN is cleared too, so it can be given to someone new (their shifts and sales keep their name).
 router.delete('/:id', wrap(async (req, res) => {
   const user = await target(req)
-  await query("UPDATE users SET active = false, pin = CASE WHEN role = 'staff' THEN NULL ELSE pin END WHERE id = $1", [user.id])
+  await query("UPDATE users SET active = false, login_sid = NULL, pin = CASE WHEN role = 'staff' THEN NULL ELSE pin END WHERE id = $1", [user.id])
   res.json({ ok: true })
+}))
+
+// Ends a staff member's live sign-in on every device: for someone who closed the browser without logging out, or
+// whose PIN may have been seen. Their next sign-in works as normal.
+router.post('/:id/sign-out', wrap(async (req, res) => {
+  const user = await target(req)
+  if (user.role !== 'staff') throw fail(400, 'Only staff have a sign-in to end')
+  await query('UPDATE users SET login_sid = NULL WHERE id = $1', [user.id])
+  res.json(clean(await one(user.id)))
 }))
 
 export default router

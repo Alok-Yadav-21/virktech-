@@ -13,13 +13,22 @@ export const staff = {
     { key: 'name', label: 'Name' }, { key: 'staffRole', label: 'Role', render: (r) => r.staffRole || '-' }, { key: 'phone', label: 'Phone' }, { key: 'pin', label: 'PIN' },
     { key: 'dailyWage', label: 'Wage / day', render: (r) => (r.dailyWage == null ? '-' : `${gbp(r.dailyWage)}/day`) },
     { key: 'branchName', label: 'Working at', render: (r) => r.branchName || 'Not signed in yet' },
-    { key: 'lastLoginAt', label: 'Last sign-in', render: (r) => (r.lastLoginAt ? new Date(r.lastLoginAt).toLocaleString('en-GB') : '-') }, active,
+    { key: 'lastLoginAt', label: 'Last sign-in', render: (r) => (r.lastLoginAt ? new Date(r.lastLoginAt).toLocaleString('en-GB') : '-') },
+    // The shop's IP they signed in from, and whether that sign-in is still live (one at a time: see utils/login.js on the server).
+    { key: 'lastIp', label: 'Signed in from', render: (r) => r.lastIp || '-' },
+    { key: 'signedIn', label: 'Signed in now', render: (r) => <span className={`badge ${r.signedIn ? 'bg-success' : 'bg-secondary'}`}>{r.signedIn ? 'Yes' : 'No'}</span> },
+    active,
   ],
+  // Ends their live sign-in on every device: for someone who closed the browser without logging out.
+  rowActions: [{
+    label: 'Sign out', show: (r) => r.signedIn, path: (r) => `/users/${r.id}/sign-out`, done: 'Signed out',
+    confirm: (r) => `Sign ${r.name} out everywhere? They can sign in again straight away.`,
+  }],
   fields: [
     { name: 'name', label: 'Name', required: true },
     { name: 'staffRole', label: 'Role', type: 'choice', choices: ['', ...STAFF_ROLES], hint: 'What they do in the shop, so you can tell staff apart.' },
     { name: 'phone', label: 'Phone' },
-    { name: 'pin', label: 'PIN', required: true, hint: '4 digits, different for every staff member. They use it alone to sign in at /staff-login.' },
+    { name: 'pin', label: 'PIN', required: true, hint: '6 digits, different for every staff member. They use it alone to sign in at /staff-login.' },
     { name: 'dailyWage', label: 'Daily wage (£ per day worked)', type: 'number', hint: 'Paid once for every day they work, however many hours.' },
     { name: 'active', label: 'Active', type: 'checkbox' },
   ],

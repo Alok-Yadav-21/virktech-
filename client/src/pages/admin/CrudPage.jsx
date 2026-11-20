@@ -8,7 +8,7 @@ import DataTable from '../../components/DataTable'
 import FormModal from '../../components/FormModal'
 
 // One admin list+form page, driven by a config (see catalogueConfig.jsx).
-export default function CrudPage({ title, url, query, noun, columns, fields, defaults, deleteVerb = 'Delete', searchable = false }) {
+export default function CrudPage({ title, url, query, noun, columns, fields, defaults, deleteVerb = 'Delete', searchable = false, rowActions = [] }) {
   const [q, setQ] = useState('')
   const search = useDebounce(q.trim())
   const listUrl = `${url}?${query ? `${query}&` : ''}all=1${searchable ? `&limit=100${search ? `&q=${encodeURIComponent(search)}` : ''}` : ''}`
@@ -39,6 +39,16 @@ export default function CrudPage({ title, url, query, noun, columns, fields, def
     } catch { /* api.js already toasted why (e.g. still in use) */ }
   }
 
+  // Extra row buttons from the config: ask first, post, then refresh so the list shows the result.
+  const extra = rowActions.map((a) => ({
+    label: a.label,
+    show: a.show,
+    run: async (row) => {
+      if (a.confirm && !window.confirm(a.confirm(row))) return
+      try { await api.post(a.path(row)); toast.success(a.done); reload() } catch { /* api.js already toasted why */ }
+    },
+  }))
+
   return (
     <>
       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -48,7 +58,7 @@ export default function CrudPage({ title, url, query, noun, columns, fields, def
       {searchable && <ListFilters q={q} onQ={setQ} shown={data?.length ?? 0} total={total} placeholder={`Search ${title.toLowerCase()} by name, email or phone`} />}
       {loading && !data && <div className="spinner-border" />}
       {error && <div className="alert alert-danger">Could not load {title.toLowerCase()}.</div>}
-      {data && <DataTable columns={columns} rows={data} onEdit={setEditing} onDelete={remove} deleteLabel={deleteVerb} />}
+      {data && <DataTable columns={columns} rows={data} onEdit={setEditing} onDelete={remove} deleteLabel={deleteVerb} extra={extra} />}
       {editing && (
         <FormModal
           key={editing.id ?? 'new'}
