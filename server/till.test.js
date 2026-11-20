@@ -240,14 +240,17 @@ test('admin sets a staff role; deleting staff hides them and frees the PIN', asy
   expect((await as.admin.post('/api/users').send({ name: 'Reuse', pin: '919100', role: 'staff', branchId: b })).status, 'PIN is free again').toBe(201)
 })
 
-test('staff are placed at the branch whose IP they sign in from; unknown IPs are refused', async () => {
+test('a shop IP places staff at that shop; any other IP signs in to the dashboard with no branch, but cannot open the till', async () => {
   const [a, b] = (await as.admin.get('/api/branches?all=1')).body
   const mate = (await query("SELECT id FROM users WHERE pin = '777100'")).rows[0].id
   await query('UPDATE users SET login_sid = NULL WHERE id = $1', [mate]) // earlier tests left Till Mate signed in
   await query("UPDATE users SET branch_id = NULL WHERE id = $1", [mate])
   await query('UPDATE branches SET ip = NULL')
   expect((await request(app).post('/api/till/login').send({ pin: '777100' })).status, 'no branch has this IP').toBe(403)
-  expect((await request(app).post('/api/auth/pin-login').send({ pin: '777100' })).status).toBe(403)
+  const dashRes = await request(app).post('/api/auth/pin-login').send({ pin: '777100' })
+  expect(dashRes.status, 'the dashboard signs in anywhere').toBe(200)
+  expect(dashRes.body.branch).toBeNull()
+  await query('UPDATE users SET login_sid = NULL WHERE id = $1', [mate]) // that dashboard sign-in took it
   expect((await as.admin.put(`/api/branches/${b.id}`).send({ ip: 'not an ip' })).status).toBe(400)
   expect((await as.admin.get('/api/branches/my-ip')).body.ip).toBe('127.0.0.1')
   expect((await as.admin.put(`/api/branches/${b.id}`).send({ ip: '127.0.0.1' })).body.ip).toBe('127.0.0.1')

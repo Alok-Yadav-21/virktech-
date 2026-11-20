@@ -31,11 +31,14 @@ export const checkIp = (v) => {
   return ip
 }
 
-// Staff sign-in: the branch whose registered IP is the caller's (see clientIp for where that comes from).
+// Staff sign-in, from any device. Every sign-in records the IP and the branch it matched, so the admin sees where each
+// person actually signed in (see clientIp for where the IP comes from). A branch's saved IP puts them at that branch; any
+// other IP still signs in but matches no branch (branch_id = NULL, and a NULL branch matches nothing in scope.js, so
+// that session sees no branch data). There is no home branch to fall back on: it is always where they signed in.
 export async function signInAtBranch(req, user) {
   const ip = clientIp(req)
   const { rows } = await query('SELECT id FROM branches WHERE ip = $1 AND active', [ip])
-  if (!rows[0]) throw fail(403, 'This computer is not registered to a branch. Ask the admin.')
-  await query('UPDATE users SET branch_id = $1, last_ip = $2, last_login_at = now() WHERE id = $3', [rows[0].id, ip, user.id])
-  return { ...user, branch_id: rows[0].id }
+  const branchId = rows[0]?.id ?? null
+  await query('UPDATE users SET branch_id = $1, last_ip = $2, last_login_at = now() WHERE id = $3', [branchId, ip, user.id])
+  return { ...user, branch_id: branchId }
 }

@@ -12,10 +12,11 @@ export const staff = {
   columns: [
     { key: 'name', label: 'Name' }, { key: 'staffRole', label: 'Role', render: (r) => r.staffRole || '-' }, { key: 'phone', label: 'Phone' }, { key: 'pin', label: 'PIN' },
     { key: 'dailyWage', label: 'Wage / day', render: (r) => (r.dailyWage == null ? '-' : `${gbp(r.dailyWage)}/day`) },
-    { key: 'branchName', label: 'Working at', render: (r) => r.branchName || 'Not signed in yet' },
+    // Where they signed in last: the branch whose saved IP matched, and the IP itself. An IP no branch has saved still signs in, with no branch.
+    { key: 'branchName', label: 'Signed in at', render: (r) => r.branchName || (r.lastLoginAt ? 'No branch (IP not saved)' : 'Not signed in yet') },
     { key: 'lastLoginAt', label: 'Last sign-in', render: (r) => (r.lastLoginAt ? new Date(r.lastLoginAt).toLocaleString('en-GB') : '-') },
-    // The shop's IP they signed in from, and whether that sign-in is still live (one at a time: see utils/login.js on the server).
-    { key: 'lastIp', label: 'Signed in from', render: (r) => r.lastIp || '-' },
+    // Whether that sign-in is still live (one at a time: see utils/login.js on the server).
+    { key: 'lastIp', label: 'Signed in from (IP)', render: (r) => r.lastIp || '-' },
     { key: 'signedIn', label: 'Signed in now', render: (r) => <span className={`badge ${r.signedIn ? 'bg-success' : 'bg-secondary'}`}>{r.signedIn ? 'Yes' : 'No'}</span> },
     active,
   ],

@@ -37,6 +37,8 @@ router.post('/login', pinLimiter, wrap(async (req, res) => {
   if (!user) throw fail(401, 'Wrong PIN')
   assertNoOtherLogin(req, user) // before the IP step, so a refused attempt records nothing
   const here = await signInAtBranch(req, user)
+  // Unlike the dashboard, the till cannot work without a branch: every sale and stock change belongs to one.
+  if (!here.branch_id) throw fail(403, 'This computer is not registered to a branch. Ask the admin.')
   setTillCookie(res, here, await claimLogin(user))
   // Signing in at the till is clocking in: no second PIN. Already on shift (signed in again, or clocked in at a
   // colleague's till) is fine, so that one refusal is ignored.

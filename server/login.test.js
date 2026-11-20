@@ -20,6 +20,8 @@ const atBranch = async () => { await query('UPDATE branches SET ip = NULL'); awa
 const free = () => query('UPDATE users SET login_sid = NULL WHERE id = $1', [id])
 const dash = (agent, pin = PIN) => agent.post('/api/auth/pin-login').send({ pin })
 const till = (agent, pin = PIN) => agent.post('/api/till/login').send({ pin })
+const open = async () => (await query('SELECT count(*)::int AS n FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [id])).rows[0].n
+const clear = () => query('DELETE FROM shifts WHERE user_id = $1', [id])
 
 beforeAll(async () => {
   blv = (await query("SELECT id FROM branches WHERE area = 'Belvedere'")).rows[0].id
@@ -126,11 +128,38 @@ test('changing a PIN or switching someone off frees their sign-in, and the old P
   expect((await admin.put(`/api/users/${id}`).send({ active: true, pin: PIN })).status).toBe(200)
 })
 
-test('a wrong IP is refused without taking the sign-in', async () => {
+test('staff can sign in from any IP: the IP is recorded and, with no shop saved for it, so is "no branch"', async () => {
+  await free(); await clear()
+  await query('UPDATE branches SET ip = NULL') // no branch has this IP saved
+  const r = await dash(request.agent(app))
+  expect(r.status, 'an unregistered IP still signs in').toBe(200)
+  expect(r.body.branch, 'but matches no branch').toBeNull()
+  const row = (await admin.get('/api/users?role=staff&all=1&limit=100')).body.find((u) => u.id === id)
+  expect(row).toMatchObject({ lastIp: '127.0.0.1', branchName: null, signedIn: true })
+  // No branch means no branch data: their own queries see nothing, however they ask.
+  expect((await query('SELECT branch_id FROM users WHERE id = $1', [id])).rows[0].branch_id).toBeNull()
+})
+
+test('a branch IP records that branch on the sign-in, and the admin sees which', async () => {
   await free()
+  const sid = (await query("SELECT id FROM branches WHERE area = 'Sidcup'")).rows[0].id
+  await query('UPDATE branches SET ip = NULL'); await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [sid])
+  expect((await dash(request.agent(app))).body.branch).toBe(sid)
+  const row = (await admin.get('/api/users?role=staff&all=1&limit=100')).body.find((u) => u.id === id)
+  expect(row).toMatchObject({ lastIp: '127.0.0.1', branchName: 'Sidcup' })
+  await free()
+  await query('UPDATE branches SET ip = NULL'); await query("UPDATE branches SET ip = '127.0.0.1' WHERE id = $1", [blv])
+  expect((await dash(request.agent(app))).body.branch, 'next sign-in is wherever that IP belongs').toBe(blv)
+})
+
+test('the till needs a registered shop, because every sale belongs to a branch', async () => {
+  await free(); await clear()
   await query('UPDATE branches SET ip = NULL')
-  expect((await dash(request.agent(app))).status).toBe(403)
+  const r = await till(request.agent(app))
+  expect(r.status).toBe(403)
+  expect(r.body.message).toMatch(/not registered to a branch/i)
   expect((await query('SELECT login_sid FROM users WHERE id = $1', [id])).rows[0].login_sid, 'nothing was claimed').toBeNull()
+  expect(await open(), 'and no shift was started').toBe(0)
 })
 
 test('customers and admins are not limited to one sign-in', async () => {
@@ -141,9 +170,6 @@ test('customers and admins are not limited to one sign-in', async () => {
   expect((await one.get('/api/auth/me')).status).toBe(200)
   expect((await two.get('/api/auth/me')).status).toBe(200)
 })
-
-const open = async () => (await query('SELECT count(*)::int AS n FROM shifts WHERE user_id = $1 AND ended_at IS NULL', [id])).rows[0].n
-const clear = () => query('DELETE FROM shifts WHERE user_id = $1', [id])
 
 test('signing in at the till starts the shift, with no second PIN, and signing in again changes nothing', async () => {
   await atBranch(); await free(); await clear()
