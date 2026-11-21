@@ -30,7 +30,7 @@ export const staff = {
     { name: 'name', label: 'Name', required: true },
     { name: 'staffRole', label: 'Role', type: 'choice', choices: ['', ...STAFF_ROLES], hint: 'What they do in the shop, so you can tell staff apart.' },
     { name: 'phone', label: 'Phone' },
-    { name: 'pin', label: 'PIN', required: true, hint: '6 digits, different for every staff member. They use it alone to sign in at /staff-login.' },
+    { name: 'pin', label: 'PIN', type: 'pin', required: true, hint: '6 digits, different for every staff member. They use it alone to sign in at /staff-login.' },
     { name: 'dailyWage', label: 'Daily wage (£ per day worked)', type: 'number', hint: 'Paid once for every day they work, however many hours.' },
     { name: 'active', label: 'Active', type: 'checkbox' },
   ],
