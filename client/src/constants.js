@@ -1,6 +1,5 @@
 // Mirrors server/utils/rules.js. Never hard-code these strings in a page.
 export const ROLES = { CUSTOMER: 'customer', STAFF: 'staff', ADMIN: 'admin' }
-export const STAFF_ROLES = ['Shopkeeper', 'Manager', 'Biller', 'Repairer'] // mirrors rules.js
 
 export const REPAIR_STATUS = {
   BOOKED: 'Booking received',

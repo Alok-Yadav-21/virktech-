@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Modal } from 'react-bootstrap'
 import api from '../api'
+import RolePicker from './RolePicker'
 
-// fields: [{ name, label, type: text|password|number|pin|textarea|select|choice|checkbox, options?, choices?, required? }]
+// fields: [{ name, label, type: text|password|number|pin|role|textarea|select|choice|checkbox, options?, choices?, required? }]
 // Parent sets `key` per record so state resets between Add and Edit.
 export default function FormModal({ title, fields, initial, onSubmit, onHide }) {
   const [values, setValues] = useState(initial)
@@ -47,6 +48,7 @@ export default function FormModal({ title, fields, initial, onSubmit, onHide }) 
         </div>
       )
     }
+    if (f.type === 'role') return <RolePicker id={f.name} value={v} onChange={(x) => set(f.name, x)} />
     if (f.type === 'pin') {
       // Exactly 6 digits and nothing else: only digits can be typed, and a numeric keypad opens on a phone. It stays text,
       // not a number, because a number input would drop the leading zeros of a PIN like 009200.

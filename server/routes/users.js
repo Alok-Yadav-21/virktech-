@@ -3,7 +3,6 @@ import { query } from '../db.js'
 import { protect, requireRole } from '../middleware/auth.js'
 import { createUser, hashPassword, WALK_IN_EMAIL } from '../utils/users.js'
 import { pageOf, likeOf, sendPage } from '../utils/paging.js'
-import { STAFF_ROLES } from '../utils/rules.js'
 import { fail, isEmail, str, wrap } from '../utils/validate.js'
 
 const router = Router()
@@ -33,10 +32,12 @@ const checkWage = (w) => {
   if (!(Number(w) >= 0 && Number(w) < 1000)) throw fail(400, 'Daily wage must be between 0 and 1000')
   return Number(w)
 }
-const checkStaffRole = (r) => {
+// A role must be one admin has added (routes/staffRoles.js); matched ignoring case, stored as the listed spelling.
+const checkStaffRole = async (r) => {
   if (r == null || r === '') return null
-  if (!STAFF_ROLES.includes(r)) throw fail(400, `Staff role must be one of: ${STAFF_ROLES.join(', ')}`)
-  return r
+  const { rows } = await query('SELECT name FROM staff_roles WHERE lower(name) = lower($1)', [String(r).trim()])
+  if (!rows[0]) throw fail(400, 'Choose one of the listed roles, or add it first')
+  return rows[0].name
 }
 // 23505 = unique violation; the DB check avoids a race between two admins picking the same PIN.
 const dup = (e) => { throw e.code === '23505' ? fail(409, e.constraint?.includes('pin') ? 'That PIN is already used by another staff member' : 'Email already registered') : e }
@@ -62,7 +63,7 @@ router.post('/', wrap(async (req, res) => {
   const phone = str(req.body.phone, { max: 30, label: 'Phone' }) || null
   let fields
   if (role === 'staff') {
-    fields = { pin: checkPin(req.body.pin), dailyWage: checkWage(req.body.dailyWage), staffRole: checkStaffRole(req.body.staffRole) } // branch comes from the sign-in IP
+    fields = { pin: checkPin(req.body.pin), dailyWage: checkWage(req.body.dailyWage), staffRole: await checkStaffRole(req.body.staffRole) } // branch comes from the sign-in IP
   } else {
     const email = str(req.body.email, { max: 254, label: 'Email', required: true }).toLowerCase()
     if (!isEmail(email)) throw fail(400, 'Enter a valid email')
@@ -94,7 +95,7 @@ router.put('/:id', wrap(async (req, res) => {
       sets.push('password_changed_at = now()', 'login_sid = NULL') // frees the sign-in too, or they could not use the new PIN
     }
     if (req.body.dailyWage !== undefined) set('daily_wage', checkWage(req.body.dailyWage))
-    if (req.body.staffRole !== undefined) set('staff_role', checkStaffRole(req.body.staffRole))
+    if (req.body.staffRole !== undefined) set('staff_role', await checkStaffRole(req.body.staffRole))
   }
   if (password && user.role === 'customer') { // blank = keep current. A reset also ends the user's existing sessions.
     checkPassword(password)

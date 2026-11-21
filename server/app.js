@@ -23,6 +23,7 @@ import marginRoutes from './routes/margins.js'
 import reportRoutes from './routes/reports.js'
 import vapeRoutes from './routes/vapes/index.js'
 import userRoutes from './routes/users.js'
+import staffRoleRoutes from './routes/staffRoles.js'
 import shiftRoutes from './routes/shifts.js'
 import tillRoutes from './routes/till.js'
 import branchRoutes from './routes/branchStock.js'
@@ -79,6 +80,7 @@ app.use('/api/tradeins', tradeinRoutes)
 app.use('/api/loyalty', loyaltyRoutes)
 app.use('/api/dashboard', dashboardRoutes)
 app.use('/api/users', userRoutes)
+app.use('/api/staff-roles', staffRoleRoutes)
 app.use('/api/shifts', shiftRoutes)
 app.use('/api/till', tillRoutes)
 app.use('/api/branch', protect, requireRole('staff'), branchRoutes)

@@ -1,5 +1,4 @@
 import { gbp } from '../../format'
-import { STAFF_ROLES } from '../../constants'
 
 const active = { key: 'active', label: 'Active', render: (r) => <span className={`badge ${r.active ? 'bg-success' : 'bg-secondary'}`}>{r.active ? 'Yes' : 'No'}</span> }
 const password = { name: 'password', label: 'Password', type: 'password', hint: 'At least 8 characters. When editing, leave blank to keep the current one.' }
@@ -28,7 +27,7 @@ export const staff = {
   }],
   fields: [
     { name: 'name', label: 'Name', required: true },
-    { name: 'staffRole', label: 'Role', type: 'choice', choices: ['', ...STAFF_ROLES], hint: 'What they do in the shop, so you can tell staff apart.' },
+    { name: 'staffRole', label: 'Role', type: 'role', hint: 'What they do in the shop, so you can tell staff apart. Choose "Add a new role" for one that is not listed.' },
     { name: 'phone', label: 'Phone' },
     { name: 'pin', label: 'PIN', type: 'pin', required: true, hint: '6 digits, different for every staff member. They use it alone to sign in at /staff-login.' },
     { name: 'dailyWage', label: 'Daily wage (£ per day worked)', type: 'number', hint: 'Paid once for every day they work, however many hours.' },
