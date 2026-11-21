@@ -64,7 +64,6 @@ export const branches = {
     { key: 'postcode', label: 'Postcode' },
     { key: 'phone', label: 'Phone' },
     { key: 'ip', label: 'Shop IP', render: (r) => r.ip || 'Not set' },
-    { key: 'staff', label: 'Staff working here', render: (r) => (r.staff?.length ? r.staff.join(', ') : '-') },
     active,
   ],
   fields: [

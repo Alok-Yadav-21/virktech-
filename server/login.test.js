@@ -213,3 +213,30 @@ test('a signed-out cookie cannot end a shift by pressing Close till', async () =
   expect((await a.post('/api/till/logout').send({ endShift: true })).status).toBe(200)
   expect(await open(), 'the stale cookie ended nothing').toBe(1)
 })
+
+test('admin dashboard lists who is active and where: signed in or on shift, nobody else, no PINs', async () => {
+  await free(); await clear()
+  const names = async () => (await admin.get('/api/users/active')).body
+  expect((await names()).some((u) => u.userId === id), 'not signed in, not on shift: not listed').toBe(false)
+
+  const phone = request.agent(app)
+  await dash(phone, PIN, blv)
+  const signedIn = (await names()).find((u) => u.userId === id)
+  expect(signedIn).toMatchObject({ branchName: 'Belvedere', ip: '127.0.0.1', signedIn: true, onShift: false })
+  expect(signedIn, 'no PIN or sign-in id').not.toHaveProperty('pin')
+  expect(signedIn).not.toHaveProperty('login_sid')
+
+  await phone.post('/api/auth/logout'); await free()
+  expect((await names()).some((u) => u.userId === id), 'logged out: gone').toBe(false)
+
+  const t = request.agent(app)
+  await till(t, PIN, blv)
+  expect((await names()).find((u) => u.userId === id), 'at the till: signed in and on shift').toMatchObject({ signedIn: true, onShift: true })
+  await t.post('/api/till/logout').send({ endShift: true })
+  expect((await names()).some((u) => u.userId === id), 'closed the till: gone').toBe(false)
+
+  expect((await request(app).get('/api/users/active')).status).toBe(401)
+  const staff = request.agent(app)
+  await dash(staff, PIN, blv)
+  expect((await staff.get('/api/users/active')).status, 'staff cannot see it').toBe(403)
+})

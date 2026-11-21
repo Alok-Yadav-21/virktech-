@@ -43,8 +43,6 @@ export const branches = crud({
     lat: 'lat', lng: 'lng', phone: 'phone', active: 'active',
   },
   adminFields: { ip: 'ip' }, // the shop's public IP; staff sign-in uses it to find their branch
-  // Admin list only: who works here (names, not PINs).
-  adminExtra: `, COALESCE((SELECT json_agg(u.name ORDER BY u.name) FROM users u WHERE u.branch_id = t.id AND u.role = 'staff' AND u.active), '[]'::json) AS staff`,
   // Must be registered before /:id. postcodes.io needs no API key.
   setup: (router) => {
     router.use((req, res, next) => { try { if (req.body && 'ip' in req.body) req.body.ip = checkIp(req.body.ip); next() } catch (e) { next(e) } })

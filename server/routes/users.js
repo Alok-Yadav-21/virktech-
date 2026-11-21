@@ -42,6 +42,20 @@ const checkStaffRole = async (r) => {
 // 23505 = unique violation; the DB check avoids a race between two admins picking the same PIN.
 const dup = (e) => { throw e.code === '23505' ? fail(409, e.constraint?.includes('pin') ? 'That PIN is already used by another staff member' : 'Email already registered') : e }
 
+// Who is active right now and where: signed in, or clocked in at a till. Admin dashboard. The branch is where they
+// signed in (or where their shift is), the IP is the one that sign-in came from; no PINs.
+router.get('/active', wrap(async (req, res) => {
+  const { rows } = await query(
+    `SELECT u.id AS "userId", u.name, b.area AS "branchName", u.last_ip AS ip, u.last_login_at AS "signedInAt",
+            (u.login_sid IS NOT NULL) AS "signedIn", (o.user_id IS NOT NULL) AS "onShift"
+     FROM users u
+     LEFT JOIN (SELECT user_id, branch_id FROM shifts WHERE ended_at IS NULL) o ON o.user_id = u.id
+     LEFT JOIN branches b ON b.id = COALESCE(o.branch_id, u.branch_id)
+     WHERE u.role = 'staff' AND u.active AND (u.login_sid IS NOT NULL OR o.user_id IS NOT NULL)
+     ORDER BY b.area, u.name`)
+  res.json(rows)
+}))
+
 // ?role=staff|customer&branchId=&q=&limit=&offset=
 router.get('/', wrap(async (req, res) => {
   const { role, branchId, q } = req.query

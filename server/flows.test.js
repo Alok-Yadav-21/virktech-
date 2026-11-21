@@ -391,10 +391,10 @@ test('admin manages staff and customers; resets and deactivation take effect imm
   expect((await as.admin.put(`/api/users/${id}`).send({ name: 'Flows Lead', dailyWage: 13.5 })).body).toMatchObject({ name: 'Flows Lead', dailyWage: 13.5 })
   expect((await as.sidcup.get('/api/auth/me')).body, 'PIN and wage never reach the staff member').not.toHaveProperty('pin')
   const branchRow = (await as.admin.get('/api/branches?all=1')).body.find((b) => b.id === sid)
-  expect(branchRow.staff, 'admin branch list names who works there').toContain('Flows Lead')
+  expect(branchRow, 'the admin branch list carries no staff list: who is active is on the dashboard').not.toHaveProperty('staff')
   expect((await request(app).get('/api/branches')).body.every((b) => !('staff' in b)), 'public list has no staff').toBe(true)
 
-  expect((await as.admin.put(`/api/users/${id}`).send({ pin: '900300', branchId: await branchOf('900300') })).status).toBe(200)
+  expect((await as.admin.put(`/api/users/${id}`).send({ pin: '900300' })).status).toBe(200)
   expect((await as.sidcup.get('/api/auth/me')).status, 'a new PIN ends the old session').toBe(401)
   await atPinBranch('900200')
   expect((await request(app).post('/api/auth/pin-login').send({ pin: '900200', branchId: await branchOf('900200') })).status, 'old PIN').toBe(401)
